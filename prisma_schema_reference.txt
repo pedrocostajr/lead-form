@@ -1,0 +1,103 @@
+
+// LeadForm Pro - Prisma Database Schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ORG_ADMIN
+  ORG_USER
+}
+
+enum FormStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+}
+
+model Organization {
+  id           String        @id @default(uuid())
+  name         String
+  slug         String        @unique
+  plan         String        @default("FREE")
+  status       String        @default("ACTIVE")
+  users        User[]
+  forms        Form[]
+  integrations Integration[]
+  createdAt    DateTime      @default(now())
+}
+
+model User {
+  id           String       @id @default(uuid())
+  orgId        String
+  organization Organization @relation(fields: [orgId], references: [id])
+  email        String       @unique
+  passwordHash String
+  name         String?
+  role         Role         @default(ORG_USER)
+  createdAt    DateTime     @default(now())
+}
+
+model Form {
+  id           String        @id @default(uuid())
+  orgId        String
+  organization Organization  @relation(fields: [orgId], references: [id])
+  name         String
+  slug         String        @unique
+  status       FormStatus    @default(DRAFT)
+  theme        Json?         // { primaryColor, logoUrl }
+  settings     Json?         // { redirectUrl, pixelId, gtmId }
+  schema       Json          // { steps: [ { type, title, fields: [...] } ] }
+  leads        Lead[]
+  integrations Integration[] @relation("FormIntegrations")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Lead {
+  id           String       @id @default(uuid())
+  formId       String
+  form         Form         @relation(fields: [formId], references: [id])
+  orgId        String
+  data         Json         // Captured fields
+  utm          Json?        // UTM source, medium, etc
+  meta         Json?        // IP, User Agent
+  status       String       @default("NEW")
+  webhookLogs  WebhookLog[]
+  createdAt    DateTime     @default(now())
+}
+
+model Integration {
+  id           String       @id @default(uuid())
+  orgId        String
+  organization Organization @relation(fields: [orgId], references: [id])
+  name         String
+  type         String       @default("WEBHOOK")
+  url          String
+  headers      Json?
+  mapping      Json?
+  isActive     Boolean      @default(true)
+  forms        Form[]       @relation("FormIntegrations")
+  webhookLogs  WebhookLog[]
+  createdAt    DateTime     @default(now())
+}
+
+model WebhookLog {
+  id            String      @id @default(uuid())
+  leadId        String
+  lead          Lead        @relation(fields: [leadId], references: [id])
+  integrationId String
+  integration   Integration @relation(fields: [integrationId], references: [id])
+  statusCode    Int?
+  response      String?     @db.Text
+  status        String      // SUCCESS, ERROR
+  attempts      Int         @default(1)
+  createdAt     DateTime    @default(now())
+}

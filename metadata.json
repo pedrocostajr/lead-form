@@ -1,0 +1,8 @@
+{
+  "name": "LeadForm Pro",
+  "description": "A high-performance multi-tenant lead capture SaaS for real estate agencies, mimicking Meta Ads native forms with external webhook and CRM integrations.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
