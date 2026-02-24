@@ -597,22 +597,34 @@ const PublicFormView = () => {
     const currentIntegrations = await db.getIntegrations(form.orgId);
     if (form.settings.webhookIds && form.settings.webhookIds.length > 0) {
       const integrations = currentIntegrations.filter(i => form.settings.webhookIds.includes(i.id));
+      const payload = JSON.stringify(lead);
+
       const promises = integrations.map(integration => {
         if (!integration.url) return Promise.resolve();
-        console.log(`[Webhook] Disparando para: ${integration.name} (${integration.url})`);
-        console.log(`[Webhook] Payload:`, JSON.stringify(lead, null, 2));
+        console.log(`[Webhook] Enviando para: ${integration.name}`);
 
-        return fetch(integration.url, {
+        // Estratégia 1: Fetch com keepalive e sem preflight (text/plain)
+        // Usar text/plain evita o OPTIONS request, fazendo o envio ser instantâneo
+        const fetchPromise = fetch(integration.url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(lead),
+          headers: { 'Content-Type': 'text/plain' },
+          body: payload,
           keepalive: true,
-          mode: 'cors',
-          credentials: 'omit'
-        })
-          .then(res => console.log(`[Webhook] Resposta: ${res.status} ${res.statusText}`))
-          .catch(err => console.error('[Webhook] Erro critico:', err));
+          mode: 'no-cors' // Garante que o navegador não trave por causa de CORS
+        }).catch(err => console.error('[Webhook] Falha no Fetch:', err));
+
+        // Estratégia 2: sendBeacon (O padrão ouro para envios durante redirecionamento)
+        try {
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon(integration.url, new Blob([payload], { type: 'text/plain' }));
+          }
+        } catch (e) {
+          console.error('[Webhook] Falha no Beacon:', e);
+        }
+
+        return fetchPromise;
       });
+
       await Promise.allSettled(promises);
     }
 
