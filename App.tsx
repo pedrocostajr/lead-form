@@ -8,9 +8,9 @@ import {
   BarChart3, LogOut, ExternalLink, Edit, Eye, Filter, Download, X,
   Type, Image as ImageIcon, Video, Square, GripVertical, Copy, ArrowUp, ArrowDown,
   Columns, Columns2, Columns3, MoreVertical, Hash, Calendar, HelpCircle,
-  Search, AlertCircle, Send
+  Search, AlertCircle, Send, Clock
 } from 'lucide-react';
-import { User, Role, Form, FormStatus, FormStep, FormBlock, BlockType, Column, StepLayout, Lead, Integration } from './types';
+import { User, Role, Form, FormStatus, FormStep, FormBlock, BlockType, Column, StepLayout, Lead, Integration, Organization } from './types';
 import { db } from './store';
 import { ICONS } from './constants';
 
@@ -38,28 +38,35 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     return saved ? JSON.parse(saved) : null;
   });
 
-  const login = async (email: string) => {
+  const login = async (email: string, password?: string) => {
     try {
       const users = await db.getUsers();
       let found = users.find(u => u.email === email);
 
+      // Bypass especial para o admin mestre (sem senha por enquanto para seu acesso)
       if (!found && email === 'contato@leadsign.com.br') {
-        const newUser: User = {
-          id: 'user-1',
-          name: 'Administrador',
+        const admin: User = {
+          id: 'admin-1',
+          orgId: 'org-admin',
           email: 'contato@leadsign.com.br',
-          role: Role.ORG_ADMIN,
-          orgId: 'org-1',
+          name: 'Super Admin',
+          role: Role.SUPER_ADMIN,
+          status: 'APPROVED',
           createdAt: new Date().toISOString()
         };
-        found = newUser;
+        found = admin;
       }
 
       if (found) {
+        if (found.password && found.password !== password) {
+          alert('Senha incorreta.');
+          return;
+        }
+
         setUser(found);
         localStorage.setItem('lp_session', JSON.stringify(found));
       } else {
-        alert('E-mail não encontrado. Use: contato@leadsign.com.br');
+        alert('Usuário não encontrado.');
       }
     } catch (e) {
       console.error("Login error:", e);
@@ -88,7 +95,7 @@ const useAuth = () => {
 // --- Layout & Sidebar ---
 
 const Sidebar = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -98,6 +105,10 @@ const Sidebar = () => {
     { label: 'Leads', icon: ICONS.Leads, path: '/dashboard/leads' },
     { label: 'Integrações', icon: ICONS.Integrations, path: '/dashboard/integrations' },
   ];
+
+  if (user?.role === Role.SUPER_ADMIN) {
+    menuItems.push({ label: 'Usuários', icon: <Users size={20} />, path: '/dashboard/admin/users' });
+  }
 
   return (
     <aside className="w-64 bg-white border-r h-screen flex flex-col fixed left-0 top-0 z-40">
@@ -235,6 +246,7 @@ const DashboardView = () => {
 // --- Leads View ---
 
 const LeadListView = () => {
+  const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,8 +257,8 @@ const LeadListView = () => {
 
       try {
         const [l, f] = await Promise.all([
-          db.getLeads(),
-          db.getForms()
+          db.getLeads(user?.orgId),
+          db.getForms(user?.orgId)
         ]);
         setLeads(l || []);
         setForms(f || []);
@@ -258,7 +270,7 @@ const LeadListView = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [user]);
 
   const exportToCSV = () => {
     if (leads.length === 0) return;
@@ -357,6 +369,7 @@ const LeadListView = () => {
 // --- Integrations View ---
 
 const IntegrationListView = () => {
+  const { user } = useAuth();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [newUrl, setNewUrl] = useState('');
@@ -365,28 +378,28 @@ const IntegrationListView = () => {
   useEffect(() => {
     const fetchIntegrations = async () => {
       try {
-        const ints = await db.getIntegrations();
+        const ints = await db.getIntegrations(user?.orgId);
         setIntegrations(ints || []);
       } catch (error) {
         console.error('Erro ao buscar integrações:', error);
       }
     };
     fetchIntegrations();
-  }, []);
+  }, [user]);
 
   const handleAdd = async () => {
     if (!newUrl || !newName) return;
-    const integration: Integration = {
+    const newInt: Integration = {
       id: `int-${Date.now()}`,
-      orgId: 'org-1',
+      orgId: user?.orgId || '',
       name: newName,
       type: 'WEBHOOK',
       url: newUrl,
       isActive: true,
       createdAt: new Date().toISOString()
     };
-    await db.saveIntegration(integration);
-    const updated = await db.getIntegrations();
+    await db.saveIntegration(newInt);
+    const updated = await db.getIntegrations(user?.orgId);
     setIntegrations(updated);
     setIsAdding(false);
     setNewUrl('');
@@ -395,7 +408,7 @@ const IntegrationListView = () => {
 
   const handleDelete = async (id: string) => {
     await db.deleteIntegration(id);
-    const updated = await db.getIntegrations();
+    const updated = await db.getIntegrations(user?.orgId);
     setIntegrations(updated);
   };
 
@@ -935,19 +948,100 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
 const LoginView = () => {
   const { login, user } = useAuth();
   const [email, setEmail] = useState('contato@leadsign.com.br');
-  if (user) return <Navigate to="/dashboard" replace />;
+  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) navigate('/dashboard');
+  }, [user]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      <div className="max-w-md w-full bg-white rounded-[50px] shadow-2xl p-12 border border-gray-100">
-        <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-blue-600 rounded-[28px] flex items-center justify-center text-white text-4xl font-black mx-auto mb-8 shadow-2xl shadow-blue-200">L</div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tighter">LeadForm Pro</h1>
-          <p className="text-gray-400 font-medium mt-3">SaaS para Imobiliárias</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-[40px] shadow-2xl shadow-blue-100 border border-blue-50">
+        <div className="text-center space-y-2">
+          <div className="w-16 h-16 bg-blue-600 rounded-[24px] flex items-center justify-center mx-auto text-white font-black text-3xl shadow-xl shadow-blue-200 mb-6">L</div>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tight">LeadForm Pro</h2>
+          <p className="text-gray-500 font-medium">Capture leads com fluxos de alta conversão.</p>
         </div>
-        <div className="space-y-8">
-          <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">E-mail Corporativo</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-8 py-5 bg-gray-50 border border-transparent focus:border-blue-500 focus:bg-white rounded-[24px] outline-none transition-all font-bold" /></div>
-          <button onClick={() => login(email)} className="w-full py-6 bg-blue-600 text-white rounded-[24px] font-black text-lg shadow-2xl shadow-blue-100 hover:bg-blue-700 transition-all">Entrar no Painel</button>
+        <div className="space-y-4">
+          <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">E-mail</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="seu@email.com" /></div>
+          <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">Senha</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="••••••••" /></div>
+          <button onClick={() => login(email, password)} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all duration-300">Entrar na Plataforma</button>
+        </div>
+        <div className="text-center pt-4">
+          <p className="text-sm text-gray-500">Ainda não tem conta? <button onClick={() => navigate('/signup')} className="text-blue-600 font-bold hover:underline">Cadastre-se como Corretor</button></p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SignupView = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSignup = async () => {
+    if (!name || !email || !password) return alert('Preencha todos os campos.');
+    setLoading(true);
+
+    try {
+      const orgId = `org-${Date.now()}`;
+      const userId = `user-${Date.now()}`;
+
+      const newOrg: Organization = {
+        id: orgId,
+        name: `Imobiliária ${name}`,
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+        plan: 'FREE',
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString()
+      };
+
+      const newUser: User = {
+        id: userId,
+        orgId,
+        email,
+        password,
+        name,
+        role: Role.ORG_ADMIN,
+        status: 'PENDING',
+        createdAt: new Date().toISOString()
+      };
+
+      await db.saveOrg(newOrg);
+      await db.saveUser(newUser);
+
+      alert('Cadastro realizado! Aguarde a aprovação do administrador para entrar.');
+      navigate('/login');
+    } catch (e) {
+      console.error('Signup error:', e);
+      alert('Erro ao realizar cadastro.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-[40px] shadow-2xl shadow-blue-100 border border-blue-50">
+        <div className="text-center space-y-2">
+          <div className="w-16 h-16 bg-blue-600 rounded-[24px] flex items-center justify-center mx-auto text-white font-black text-3xl shadow-xl shadow-blue-200 mb-6">L</div>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tight">Criar Conta</h2>
+          <p className="text-gray-500 font-medium">Comece a capturar leads imobiliários hoje.</p>
+        </div>
+        <div className="space-y-4">
+          <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">Nome Completo</label><input value={name} onChange={e => setName(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="Seu nome" /></div>
+          <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">E-mail</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="seu@email.com" /></div>
+          <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">Senha</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="••••••••" /></div>
+          <button onClick={handleSignup} disabled={loading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all duration-300 disabled:opacity-50">
+            {loading ? 'Criando conta...' : 'Cadastrar agora'}
+          </button>
+        </div>
+        <div className="text-center pt-4">
+          <p className="text-sm text-gray-500">Já tem conta? <button onClick={() => navigate('/login')} className="text-blue-600 font-bold hover:underline">Fazer Login</button></p>
         </div>
       </div>
     </div>
@@ -955,11 +1049,27 @@ const LoginView = () => {
 };
 
 const FormDetailView = () => {
+  const { user } = useAuth();
   const { formId } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState<Form | null>(null);
   const [activeTab, setActiveTab] = useState('builder');
   const [isSaving, setIsSaving] = useState(false);
+
+  const saveForm = async () => {
+    if (!form || !user) return;
+    setIsSaving(true);
+    try {
+      const formToSave = { ...form, orgId: user.orgId, updatedAt: new Date().toISOString() };
+      await db.saveForm(formToSave);
+      setForm(formToSave);
+      alert('✅ Formulário salvo com sucesso!');
+    } catch (e) {
+      alert('❌ Erro ao salvar: ' + (e as Error).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     const fetchForm = async () => {
@@ -971,7 +1081,7 @@ const FormDetailView = () => {
         if (formId === 'new') {
           const newForm: Form = {
             id: `form-${Date.now()}`,
-            orgId: 'org-1', // Mock org
+            orgId: user?.orgId || 'org-1',
             name: 'Novo Formulário',
             slug: `novo-fluxo-${Date.now()}`,
             status: FormStatus.DRAFT,
@@ -993,7 +1103,7 @@ const FormDetailView = () => {
           return;
         }
 
-        const forms = await db.getForms();
+        const forms = await db.getForms(user?.orgId);
         const found = (forms || []).find(f => f.id === formId);
         if (found) setForm(found);
         clearTimeout(timeout);
@@ -1018,17 +1128,7 @@ const FormDetailView = () => {
           <Link to={`/f/leadsign/${form.slug}`} target="_blank" className="flex items-center gap-2 px-6 py-3 bg-white border rounded-2xl font-bold hover:shadow-md transition-all"><ExternalLink size={18} /> Ver Página</Link>
           <button
             disabled={isSaving}
-            onClick={async () => {
-              setIsSaving(true);
-              try {
-                await db.saveForm(form);
-                alert('✅ Alterações salvas com sucesso!');
-              } catch (e) {
-                alert('❌ Erro ao salvar: ' + (e as Error).message);
-              } finally {
-                setIsSaving(false);
-              }
-            }}
+            onClick={saveForm}
             className="flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-100 disabled:opacity-50"
           >
             {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={18} />}
@@ -1101,6 +1201,7 @@ const FormDetailView = () => {
 };
 
 const FormListView = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1109,7 +1210,7 @@ const FormListView = () => {
     const fetchForms = async () => {
       const timeout = setTimeout(() => setLoading(false), 5000);
       try {
-        const f = await db.getForms();
+        const f = await db.getForms(user?.orgId);
         setForms(f || []);
         clearTimeout(timeout);
       } catch (error) {
@@ -1119,7 +1220,7 @@ const FormListView = () => {
       }
     };
     fetchForms();
-  }, []);
+  }, [user]);
 
   if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Formulários...</div>;
 
@@ -1191,26 +1292,156 @@ const LeadsByFormView = ({ formId }: { formId: string }) => {
   );
 };
 
+const AdminUsersView = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [u, o] = await Promise.all([db.getUsers(), db.getOrgs()]);
+        setUsers(u);
+        setOrganizations(o);
+      } catch (error) {
+        console.error('Erro ao buscar dados admin:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleApprove = async (user: User) => {
+    try {
+      await db.saveUser({ ...user, status: 'APPROVED' });
+      setUsers(users.map(u => u.id === user.id ? { ...u, status: 'APPROVED' } : u));
+    } catch (error) {
+      alert('Erro ao aprovar usuário.');
+    }
+  };
+
+  const handleSuspend = async (user: User) => {
+    try {
+      await db.saveUser({ ...user, status: 'SUSPENDED' });
+      setUsers(users.map(u => u.id === user.id ? { ...u, status: 'SUSPENDED' } : u));
+    } catch (error) {
+      alert('Erro ao suspender usuário.');
+    }
+  };
+
+  if (loading) return <div className="p-20 text-center font-bold">Carregando painel administrativo...</div>;
+
+  return (
+    <div className="space-y-10">
+      <header>
+        <h2 className="text-3xl font-black text-gray-900 tracking-tight">Gestão de Usuários</h2>
+        <p className="text-gray-500 font-medium">Aprove ou suspenda o acesso de corretores à plataforma.</p>
+      </header>
+
+      <div className="bg-white rounded-[40px] border shadow-sm overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            <tr>
+              <th className="px-8 py-4">Usuário / Imobiliária</th>
+              <th className="px-8 py-4">E-mail</th>
+              <th className="px-8 py-4">Status</th>
+              <th className="px-8 py-4">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {users.filter(u => u.role !== Role.SUPER_ADMIN).map(user => {
+              const org = organizations.find(o => o.id === user.orgId);
+              return (
+                <tr key={user.id} className="hover:bg-gray-50/50">
+                  <td className="px-8 py-6">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-gray-900">{user.name}</span>
+                      <span className="text-xs text-blue-600 font-medium">{org?.name || 'Sem Org'}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-6 font-medium text-gray-500">{user.email}</td>
+                  <td className="px-8 py-6">
+                    <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full tracking-widest ${user.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
+                      user.status === 'PENDING' ? 'bg-yellow-50 text-yellow-600' :
+                        'bg-red-50 text-red-600'
+                      }`}>
+                      {user.status}
+                    </span>
+                  </td>
+                  <td className="px-8 py-6">
+                    <div className="flex gap-2">
+                      {user.status === 'PENDING' && (
+                        <button onClick={() => handleApprove(user)} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all">Aprovar</button>
+                      )}
+                      {user.status === 'APPROVED' && (
+                        <button onClick={() => handleSuspend(user)} className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-100 transition-all">Suspender</button>
+                      )}
+                      {user.status === 'SUSPENDED' && (
+                        <button onClick={() => handleApprove(user)} className="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-all">Reativar</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const PendingApprovalView = () => {
+  const { logout } = useAuth();
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8 text-center space-y-6">
+      <div className="w-24 h-24 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center animate-pulse">
+        <Clock size={48} />
+      </div>
+      <h1 className="text-3xl font-black text-gray-900 tracking-tight">Conta em Análise</h1>
+      <p className="text-gray-500 max-w-sm font-medium">Sua conta foi criada com sucesso! Por questões de segurança, nossa equipe está revisando seus dados. Você receberá um e-mail assim que for liberado.</p>
+      <div className="pt-4 flex flex-col gap-4">
+        <button onClick={() => window.location.reload()} className="bg-white border px-8 py-3 rounded-2xl font-bold hover:bg-gray-50 transition-all">Verificar Status</button>
+        <button onClick={logout} className="text-red-600 font-bold">Sair da conta</button>
+      </div>
+    </div>
+  );
+};
+
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  if (user.status === 'PENDING' && user.role !== Role.SUPER_ADMIN) {
+    return <PendingApprovalView />;
+  }
+
+  if (user.status === 'SUSPENDED') {
+    return <div className="min-h-screen flex items-center justify-center font-bold text-red-600">Sua conta foi suspensa. Entre em contato com o suporte.</div>;
+  }
+
+  return <>{children}</>;
+};
+
 const App: React.FC = () => (
   <AuthProvider>
     <HashRouter>
       <Routes>
         <Route path="/login" element={<LoginView />} />
+        <Route path="/signup" element={<SignupView />} />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><DashboardView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/forms" element={<ProtectedRoute><Layout><FormListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/forms/:formId" element={<ProtectedRoute><Layout><FormDetailView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/leads" element={<ProtectedRoute><Layout><LeadListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/integrations" element={<ProtectedRoute><Layout><IntegrationListView /></Layout></ProtectedRoute>} />
+        <Route path="/dashboard/admin/users" element={<ProtectedRoute><Layout><AdminUsersView /></Layout></ProtectedRoute>} />
         <Route path="/f/:orgSlug/:formSlug" element={<PublicFormView />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </HashRouter>
   </AuthProvider>
 );
-
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
-};
 
 export default App;

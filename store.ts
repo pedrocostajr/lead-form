@@ -27,7 +27,7 @@ class FirebaseStorageService {
       const querySnapshot = await getDocs(collection(firestore, this.ORGS));
       return querySnapshot.docs.map(doc => doc.data() as Organization);
     } catch (e) {
-      console.error("Error fetching orgs:", e);
+      console.error("Error fetching organizations:", e);
       return [];
     }
   }
@@ -42,9 +42,13 @@ class FirebaseStorageService {
     }
   }
 
-  async getForms() {
+  async getForms(orgId?: string) {
     try {
-      const querySnapshot = await getDocs(collection(firestore, this.FORMS));
+      let q = query(collection(firestore, this.FORMS));
+      if (orgId) {
+        q = query(q, where("orgId", "==", orgId));
+      }
+      const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as Form);
     } catch (e) {
       console.error("Error fetching forms:", e);
@@ -53,7 +57,7 @@ class FirebaseStorageService {
   }
 
   async getFormBySlug(orgSlug: string, formSlug: string) {
-    console.log(`Buscando formulário: ${formSlug}`);
+    console.log(`Buscando formulário: ${formSlug} na org: ${orgSlug}`);
     try {
       const q = query(
         collection(firestore, this.FORMS),
@@ -61,7 +65,9 @@ class FirebaseStorageService {
       );
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
-        return querySnapshot.docs[0].data() as Form;
+        const form = querySnapshot.docs[0].data() as Form;
+        // Opcional: validar orgSlug se necessário
+        return form;
       }
       return null;
     } catch (e) {
@@ -70,12 +76,12 @@ class FirebaseStorageService {
     }
   }
 
-  async getLeads() {
+  async getLeads(orgId?: string) {
     try {
-      const q = query(
-        collection(firestore, this.LEADS),
-        orderBy("createdAt", "desc")
-      );
+      let q = query(collection(firestore, this.LEADS), orderBy("createdAt", "desc"));
+      if (orgId) {
+        q = query(q, where("orgId", "==", orgId), orderBy("createdAt", "desc"));
+      }
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as Lead);
     } catch (e) {
@@ -100,9 +106,13 @@ class FirebaseStorageService {
     }
   }
 
-  async getIntegrations() {
+  async getIntegrations(orgId?: string) {
     try {
-      const querySnapshot = await getDocs(collection(firestore, this.INTEGRATIONS));
+      let q = query(collection(firestore, this.INTEGRATIONS));
+      if (orgId) {
+        q = query(q, where("orgId", "==", orgId));
+      }
+      const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as Integration);
     } catch (e) {
       console.error("Error fetching integrations:", e);
@@ -124,6 +134,24 @@ class FirebaseStorageService {
       }
     });
     return clean;
+  }
+
+  async saveUser(user: User) {
+    try {
+      await setDoc(doc(firestore, this.USERS, user.id), this.sanitize(user));
+    } catch (e) {
+      console.error("Error saving user:", e);
+      throw e;
+    }
+  }
+
+  async saveOrg(org: Organization) {
+    try {
+      await setDoc(doc(firestore, this.ORGS, org.id), this.sanitize(org));
+    } catch (e) {
+      console.error("Error saving org:", e);
+      throw e;
+    }
   }
 
   async saveLead(lead: Lead) {

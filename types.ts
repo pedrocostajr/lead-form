@@ -11,9 +11,9 @@ export enum FormStatus {
   PAUSED = 'PAUSED'
 }
 
-export type BlockType = 
+export type BlockType =
   | 'heading' | 'text' | 'image' | 'video' | 'button' | 'spacer'
-  | 'short_text' | 'long_text' | 'single_choice' | 'multi_choice' 
+  | 'short_text' | 'long_text' | 'single_choice' | 'multi_choice'
   | 'yes_no' | 'number' | 'date' | 'file' | 'standard_contact' | 'email';
 
 export interface BlockSettings {
@@ -64,8 +64,10 @@ export interface User {
   id: string;
   orgId: string;
   email: string;
+  password?: string; // Simples para MVP, idealmente via Firebase Auth
   name: string;
   role: Role;
+  status: 'PENDING' | 'APPROVED' | 'SUSPENDED';
   createdAt: string;
 }
 
