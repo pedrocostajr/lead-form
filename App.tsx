@@ -467,7 +467,42 @@ const PublicFormView = () => {
     const fetchForm = async () => {
       try {
         const found = await db.getFormBySlug(orgSlug || '', formSlug || '');
-        if (found) setForm(found);
+        if (found) {
+          setForm(found);
+
+          // Meta Pixel injection
+          if (found.settings.pixelId) {
+            console.log(`Injetando Pixel: ${found.settings.pixelId}`);
+            const script = document.createElement('script');
+            script.innerHTML = `
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              fbq('init', '${found.settings.pixelId}');
+              fbq('track', 'PageView');
+            `;
+            document.head.appendChild(script);
+          }
+
+          // GTM injection
+          if (found.settings.gtmId) {
+            console.log(`Injetando GTM: ${found.settings.gtmId}`);
+            const script = document.createElement('script');
+            script.innerHTML = `
+              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer','${found.settings.gtmId}');
+            `;
+            document.head.appendChild(script);
+          }
+        }
       } catch (error) {
         console.error('Erro ao buscar formulário público:', error);
       }
@@ -502,6 +537,11 @@ const PublicFormView = () => {
     };
 
     await db.saveLead(lead);
+
+    // Meta Pixel Lead Event
+    if (form.settings.pixelId && (window as any).fbq) {
+      (window as any).fbq('track', 'Lead');
+    }
 
     // Real Webhook Dispatch
     const currentIntegrations = await db.getIntegrations();
