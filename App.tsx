@@ -29,8 +29,9 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     return saved ? JSON.parse(saved) : null;
   });
 
-  const login = (email: string) => {
-    const found = db.getUsers().find(u => u.email === email);
+  const login = async (email: string) => {
+    const users = await db.getUsers();
+    const found = users.find(u => u.email === email);
     if (found) {
       setUser(found);
       localStorage.setItem('lp_session', JSON.stringify(found));
@@ -112,8 +113,27 @@ const Layout = ({ children }: { children: React.ReactNode }) => (
 // --- Dashboard View ---
 
 const DashboardView = () => {
-  const leads = db.getLeads();
-  const forms = db.getForms();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [forms, setForms] = useState<Form[]>([]);
+  const [integrationsCount, setIntegrationsCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [l, f, i] = await Promise.all([
+        db.getLeads(),
+        db.getForms(),
+        db.getIntegrations()
+      ]);
+      setLeads(l);
+      setForms(f);
+      setIntegrationsCount(i.length);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Dashboard...</div>;
 
   return (
     <div className="space-y-10">
@@ -135,7 +155,7 @@ const DashboardView = () => {
         </div>
         <div className="bg-white p-8 rounded-[40px] border shadow-sm">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Integrações</p>
-          <h4 className="text-4xl font-black text-gray-900">{db.getIntegrations().length}</h4>
+          <h4 className="text-4xl font-black text-gray-900">{integrationsCount}</h4>
           <p className="text-xs text-gray-400 font-bold mt-2">Webhooks configurados</p>
         </div>
       </div>
@@ -178,8 +198,24 @@ const DashboardView = () => {
 // --- Leads View ---
 
 const LeadListView = () => {
-  const leads = db.getLeads();
-  const forms = db.getForms();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [forms, setForms] = useState<Form[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [l, f] = await Promise.all([
+        db.getLeads(),
+        db.getForms()
+      ]);
+      setLeads(l);
+      setForms(f);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Leads...</div>;
 
   return (
     <div className="space-y-10">
@@ -243,10 +279,14 @@ const IntegrationListView = () => {
   const [newName, setNewName] = useState('');
 
   useEffect(() => {
-    setIntegrations(db.getIntegrations());
+    const fetchIntegrations = async () => {
+      const ints = await db.getIntegrations();
+      setIntegrations(ints);
+    };
+    fetchIntegrations();
   }, []);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newUrl || !newName) return;
     const integration: Integration = {
       id: `int-${Date.now()}`,
@@ -257,16 +297,18 @@ const IntegrationListView = () => {
       isActive: true,
       createdAt: new Date().toISOString()
     };
-    db.saveIntegration(integration);
-    setIntegrations(db.getIntegrations());
+    await db.saveIntegration(integration);
+    const updated = await db.getIntegrations();
+    setIntegrations(updated);
     setIsAdding(false);
     setNewUrl('');
     setNewName('');
   };
 
-  const handleDelete = (id: string) => {
-    db.deleteIntegration(id);
-    setIntegrations(db.getIntegrations());
+  const handleDelete = async (id: string) => {
+    await db.deleteIntegration(id);
+    const updated = await db.getIntegrations();
+    setIntegrations(updated);
   };
 
   return (
@@ -334,8 +376,11 @@ const PublicFormView = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const found = db.getFormBySlug(orgSlug || '', formSlug || '');
-    if (found) setForm(found);
+    const fetchForm = async () => {
+      const found = await db.getFormBySlug(orgSlug || '', formSlug || '');
+      if (found) setForm(found);
+    };
+    fetchForm();
   }, [orgSlug, formSlug]);
 
   if (!form) return <div className="min-h-screen flex items-center justify-center font-bold">404 - Formulário não encontrado</div>;
@@ -351,55 +396,55 @@ const PublicFormView = () => {
     }
   };
 
-  const submitForm = () => {
+  const submitForm = async () => {
     setIsLoading(true);
-    // Simulação de delay de rede
-    setTimeout(() => {
-      const lead: Lead = {
-        id: `lead-${Date.now()}`,
-        orgId: form.orgId,
-        formId: form.id,
-        data: formData,
-        utm: {}, // Aqui capturaríamos via search params
-        status: 'NEW',
-        createdAt: new Date().toISOString()
-      };
-      db.saveLead(lead);
 
-      // Real Webhook Dispatch
-      if (form.settings.webhookIds && form.settings.webhookIds.length > 0) {
-        const integrations = db.getIntegrations().filter(i => form.settings.webhookIds.includes(i.id));
-        integrations.forEach(integration => {
-          if (integration.url) {
-            console.log(`Disparando webhook: ${integration.name} -> ${integration.url}`);
-            fetch(integration.url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(lead)
-            }).catch(err => console.error('Erro no webhook:', err));
-          }
-        });
-      } else {
-        // Fallback: Dispatch to all active webhooks if none selected (simplification for prototype)
-        const allIntegrations = db.getIntegrations().filter(i => i.isActive);
-        allIntegrations.forEach(integration => {
-          console.log(`Disparando webhook (global): ${integration.name} -> ${integration.url}`);
+    const lead: Lead = {
+      id: `lead-${Date.now()}`,
+      orgId: form.orgId,
+      formId: form.id,
+      data: formData,
+      utm: {}, // Aqui capturaríamos via search params
+      status: 'NEW',
+      createdAt: new Date().toISOString()
+    };
+
+    await db.saveLead(lead);
+
+    // Real Webhook Dispatch
+    const currentIntegrations = await db.getIntegrations();
+    if (form.settings.webhookIds && form.settings.webhookIds.length > 0) {
+      const integrations = currentIntegrations.filter(i => form.settings.webhookIds.includes(i.id));
+      integrations.forEach(integration => {
+        if (integration.url) {
+          console.log(`Disparando webhook: ${integration.name} -> ${integration.url}`);
           fetch(integration.url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(lead)
           }).catch(err => console.error('Erro no webhook:', err));
-        });
-      }
+        }
+      });
+    } else {
+      // Fallback: Dispatch to all active webhooks if none selected (simplification for prototype)
+      const allIntegrations = currentIntegrations.filter(i => i.isActive);
+      allIntegrations.forEach(integration => {
+        console.log(`Disparando webhook (global): ${integration.name} -> ${integration.url}`);
+        fetch(integration.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(lead)
+        }).catch(err => console.error('Erro no webhook:', err));
+      });
+    }
 
-      setIsLoading(false);
+    setIsLoading(false);
 
-      if (form.settings.redirectUrl) {
-        window.location.href = form.settings.redirectUrl;
-      } else {
-        setIsSubmitted(true);
-      }
-    }, 1500);
+    if (form.settings.redirectUrl) {
+      window.location.href = form.settings.redirectUrl;
+    } else {
+      setIsSubmitted(true);
+    }
   };
 
   if (isSubmitted) {
@@ -599,6 +644,32 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
           <div className="space-y-6">
             <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Título / Pergunta</label><input value={selectedBlock.settings.label} onChange={e => updateBlockSettings(selectedBlock.id, { label: e.target.value })} className="w-full px-4 py-2 border rounded-xl outline-none" /></div>
 
+            {selectedBlock.type === 'image' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">URL da Imagem</label>
+                  <input
+                    value={selectedBlock.settings.src || ''}
+                    onChange={e => updateBlockSettings(selectedBlock.id, { src: e.target.value })}
+                    placeholder="https://..."
+                    className="w-full px-4 py-2 border rounded-xl outline-none text-xs font-mono"
+                  />
+                </div>
+                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                  <p className="text-[10px] font-bold text-blue-600 uppercase mb-2">Dica do Canva</p>
+                  <p className="text-[11px] text-blue-700 leading-tight mb-3">Crie seu design no Canva, clique em "Compartilhar", selecione "Mais" e escolha "Incorporar" para pegar o link da imagem.</p>
+                  <a
+                    href="https://www.canva.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-2 bg-white text-blue-600 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:shadow-md transition-all"
+                  >
+                    <ImageIcon size={14} /> Abrir Canva
+                  </a>
+                </div>
+              </div>
+            )}
+
             {['short_text', 'email', 'standard_contact'].includes(selectedBlock.type) && (
               <div>
                 <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Chave de Mapeamento (JSON Key)</label>
@@ -665,33 +736,37 @@ const FormDetailView = () => {
   const [activeTab, setActiveTab] = useState('builder');
 
   useEffect(() => {
-    if (formId === 'new') {
-      const newForm: Form = {
-        id: `form-${Date.now()}`,
-        orgId: 'org-1', // Mock org
-        name: 'Novo Formulário',
-        slug: `novo-fluxo-${Date.now()}`,
-        status: FormStatus.DRAFT,
-        theme: { primaryColor: '#2563eb' },
-        steps: [
-          {
-            id: `step-${Date.now()}`,
-            title: 'Início',
-            layout: '1-column',
-            columns: [{ id: `col-${Date.now()}`, blocks: [] }]
-          }
-        ],
-        settings: { webhookIds: [] },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      db.saveForm(newForm);
-      navigate(`/dashboard/forms/${newForm.id}`, { replace: true });
-      return;
-    }
+    const fetchForm = async () => {
+      if (formId === 'new') {
+        const newForm: Form = {
+          id: `form-${Date.now()}`,
+          orgId: 'org-1', // Mock org
+          name: 'Novo Formulário',
+          slug: `novo-fluxo-${Date.now()}`,
+          status: FormStatus.DRAFT,
+          theme: { primaryColor: '#2563eb' },
+          steps: [
+            {
+              id: `step-${Date.now()}`,
+              title: 'Início',
+              layout: '1-column',
+              columns: [{ id: `col-${Date.now()}`, blocks: [] }]
+            }
+          ],
+          settings: { webhookIds: [] },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        await db.saveForm(newForm);
+        navigate(`/dashboard/forms/${newForm.id}`, { replace: true });
+        return;
+      }
 
-    const found = db.getForms().find(f => f.id === formId);
-    if (found) setForm(found);
+      const forms = await db.getForms();
+      const found = forms.find(f => f.id === formId);
+      if (found) setForm(found);
+    };
+    fetchForm();
   }, [formId, navigate]);
 
   if (!form) return null;
@@ -705,7 +780,7 @@ const FormDetailView = () => {
         </div>
         <div className="flex gap-3">
           <Link to={`/f/leadsign/${form.slug}`} target="_blank" className="flex items-center gap-2 px-6 py-3 bg-white border rounded-2xl font-bold hover:shadow-md transition-all"><ExternalLink size={18} /> Ver Página</Link>
-          <button onClick={() => { db.saveForm(form); alert('Salvo!'); }} className="flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-100"><Save size={18} /> Salvar</button>
+          <button onClick={async () => { await db.saveForm(form); alert('Salvo!'); }} className="flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-100"><Save size={18} /> Salvar</button>
         </div>
       </header>
       <div className="flex gap-2 bg-gray-100 p-1 rounded-2xl w-fit">
@@ -718,16 +793,7 @@ const FormDetailView = () => {
       <div>
         {activeTab === 'builder' && <FormBuilderTab form={form} setForm={setForm} />}
         {activeTab === 'leads' && (
-          <div className="bg-white rounded-[32px] border shadow-sm overflow-hidden">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50"><tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><th className="px-8 py-4">Lead</th><th className="px-8 py-4">Data</th></tr></thead>
-              <tbody className="divide-y divide-gray-100">
-                {db.getLeadsByForm(form.id).map(l => (
-                  <tr key={l.id}><td className="px-8 py-4 font-bold">{l.data.email || 'Anônimo'}</td><td className="px-8 py-4 text-xs text-gray-400">{new Date(l.createdAt).toLocaleDateString()}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LeadsByFormView formId={form.id} />
         )}
         {activeTab === 'settings' && (
           <div className="p-8 bg-white rounded-[32px] border shadow-sm space-y-6 max-w-2xl mx-auto">
@@ -783,6 +849,20 @@ const FormDetailView = () => {
 
 const FormListView = () => {
   const navigate = useNavigate();
+  const [forms, setForms] = useState<Form[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchForms = async () => {
+      const f = await db.getForms();
+      setForms(f);
+      setLoading(false);
+    };
+    fetchForms();
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Formulários...</div>;
+
   return (
     <div className="space-y-12">
       <div className="flex items-center justify-between">
@@ -790,7 +870,7 @@ const FormListView = () => {
         <button onClick={() => navigate('/dashboard/forms/new')} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-[20px] font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all"><Plus size={20} /> Novo Fluxo</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {db.getForms().map(form => (
+        {forms.map(form => (
           <div key={form.id} onClick={() => navigate(`/dashboard/forms/${form.id}`)} className="bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm cursor-pointer hover:shadow-2xl hover:-translate-y-1.5 transition-all group">
             <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[20px] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500"><FileText size={32} /></div>
             <h3 className="text-2xl font-bold text-gray-900 truncate">{form.name}</h3>
@@ -798,6 +878,36 @@ const FormListView = () => {
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+// --- Subview for Leads by Form ---
+const LeadsByFormView = ({ formId }: { formId: string }) => {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLeads = async () => {
+      const l = await db.getLeadsByForm(formId);
+      setLeads(l);
+      setLoading(false);
+    };
+    fetchLeads();
+  }, [formId]);
+
+  if (loading) return <div className="p-10 text-center font-bold">Carregando leads...</div>;
+
+  return (
+    <div className="bg-white rounded-[32px] border shadow-sm overflow-hidden">
+      <table className="w-full text-left">
+        <thead className="bg-gray-50"><tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><th className="px-8 py-4">Lead</th><th className="px-8 py-4">Data</th></tr></thead>
+        <tbody className="divide-y divide-gray-100">
+          {leads.map(l => (
+            <tr key={l.id}><td className="px-8 py-4 font-bold">{l.data.email || 'Anônimo'}</td><td className="px-8 py-4 text-xs text-gray-400">{new Date(l.createdAt).toLocaleDateString()}</td></tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
