@@ -758,6 +758,97 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
     setIsAddingBlock(null);
   };
 
+  const duplicateBlock = (e: React.MouseEvent, block: FormBlock, stepId: string, colId: string) => {
+    e.stopPropagation();
+    const newBlock: FormBlock = {
+      ...block,
+      id: `block-${Date.now()}`,
+      settings: { ...block.settings, label: `${block.settings.label} (Cópia)` }
+    };
+
+    setForm({
+      ...form,
+      steps: form.steps.map(s => s.id === stepId ? {
+        ...s,
+        columns: s.columns.map(c => c.id === colId ? {
+          ...c,
+          blocks: c.blocks.reduce((acc, b) => {
+            acc.push(b);
+            if (b.id === block.id) acc.push(newBlock);
+            return acc;
+          }, [] as FormBlock[])
+        } : c)
+      } : s)
+    });
+    setSelectedBlockId(newBlock.id);
+  };
+
+  const moveStep = (e: React.MouseEvent, index: number, direction: 'up' | 'down') => {
+    e.stopPropagation();
+    const newSteps = [...form.steps];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newSteps.length) return;
+
+    [newSteps[index], newSteps[targetIndex]] = [newSteps[targetIndex], newSteps[index]];
+    setForm({ ...form, steps: newSteps });
+  };
+
+  const [draggedBlock, setDraggedBlock] = useState<{ blockId: string, stepId: string, colId: string } | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, blockId: string, stepId: string, colId: string) => {
+    setDraggedBlock({ blockId, stepId, colId });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetStepId: string, targetColId: string, targetBlockId?: string) => {
+    e.preventDefault();
+    if (!draggedBlock) return;
+
+    const { blockId: draggedId, stepId: sourceStepId, colId: sourceColId } = draggedBlock;
+
+    // Find the block
+    const sourceStep = form.steps.find(s => s.id === sourceStepId);
+    const sourceCol = sourceStep?.columns.find(c => c.id === sourceColId);
+    const blockToMove = sourceCol?.blocks.find(b => b.id === draggedId);
+
+    if (!blockToMove) return;
+
+    const newSteps = form.steps.map(s => {
+      // Remove from source
+      let updatedColumns = s.columns.map(c => {
+        if (s.id === sourceStepId && c.id === sourceColId) {
+          return { ...c, blocks: c.blocks.filter(b => b.id !== draggedId) };
+        }
+        return c;
+      });
+
+      // Add to target
+      updatedColumns = updatedColumns.map(c => {
+        if (s.id === targetStepId && c.id === targetColId) {
+          const newBlocks = [...c.blocks];
+          if (targetBlockId) {
+            const index = newBlocks.findIndex(b => b.id === targetBlockId);
+            newBlocks.splice(index, 0, blockToMove);
+          } else {
+            newBlocks.push(blockToMove);
+          }
+          return { ...c, blocks: newBlocks };
+        }
+        return c;
+      });
+
+      return { ...s, columns: updatedColumns };
+    });
+
+    setForm({ ...form, steps: newSteps });
+    setDraggedBlock(null);
+  };
+
   const selectedBlock = form.steps.flatMap(s => s.columns.flatMap(c => c.blocks)).find(b => b.id === selectedBlockId);
 
   return (
@@ -769,8 +860,12 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
         </div>
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {form.steps.map((s, i) => (
-            <div key={s.id} onClick={() => setActiveStepId(s.id)} className={`p-3 rounded-xl border cursor-pointer transition-all ${activeStepId === s.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white text-gray-600'}`}>
-              <span className="text-xs font-bold truncate block">{i + 1}. {s.title}</span>
+            <div key={s.id} onClick={() => setActiveStepId(s.id)} className={`group relative p-3 rounded-xl border cursor-pointer transition-all ${activeStepId === s.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white text-gray-600'}`}>
+              <span className="text-xs font-bold truncate block pr-6">{i + 1}. {s.title}</span>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                {i > 0 && <button onClick={(e) => moveStep(e, i, 'up')} className="p-0.5 hover:bg-black/10 rounded"><ArrowUp size={12} /></button>}
+                {i < form.steps.length - 1 && <button onClick={(e) => moveStep(e, i, 'down')} className="p-0.5 hover:bg-black/10 rounded"><ArrowDown size={12} /></button>}
+              </div>
             </div>
           ))}
         </div>
@@ -784,7 +879,23 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
             {activeStep.columns.map(col => (
               <div key={col.id} className="space-y-3">
                 {col.blocks.map(b => (
-                  <div key={b.id} onClick={() => setSelectedBlockId(b.id)} className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedBlockId === b.id ? 'border-blue-500 bg-blue-50/50' : 'bg-white border-white shadow-sm hover:border-gray-200'}`}>
+                  <div
+                    key={b.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, b.id, activeStepId, col.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, activeStepId, col.id, b.id)}
+                    onClick={() => setSelectedBlockId(b.id)}
+                    className={`group relative p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedBlockId === b.id ? 'border-blue-500 bg-blue-50/50' : 'bg-white border-white shadow-sm hover:border-gray-200'}`}
+                  >
+                    <div className="absolute -left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing text-gray-400">
+                      <GripVertical size={14} />
+                    </div>
+
+                    <div className="absolute -right-2 top-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <button onClick={(e) => duplicateBlock(e, b, activeStepId, col.id)} className="p-1.5 bg-white border shadow-sm rounded-lg text-blue-600 hover:bg-blue-50 transition-all" title="Duplicar"><Copy size={12} /></button>
+                    </div>
+
                     {b.type === 'heading' && <h3 className="font-bold text-gray-800 pointer-events-none">{b.settings.label}</h3>}
                     {b.type === 'text' && <p className="text-[10px] text-gray-500 leading-tight pointer-events-none">{b.settings.label}</p>}
                     {b.type === 'image' && (
@@ -820,7 +931,14 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                     )}
                   </div>
                 ))}
-                <button onClick={() => setIsAddingBlock({ stepId: activeStepId, colId: col.id })} className="w-full py-2 border-2 border-dashed border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 hover:border-blue-200 hover:text-blue-500 transition-all">+ Adicionar Bloco</button>
+                <button
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, activeStepId, col.id)}
+                  onClick={() => setIsAddingBlock({ stepId: activeStepId, colId: col.id })}
+                  className="w-full py-2 border-2 border-dashed border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 hover:border-blue-200 hover:text-blue-500 transition-all"
+                >
+                  + Adicionar Bloco
+                </button>
               </div>
             ))}
           </div>
@@ -926,7 +1044,10 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                 <button onClick={() => updateBlockSettings(selectedBlock.id, { options: [...selectedBlock.settings.options!, 'Nova Opção'] })} className="w-full py-2 border border-dashed border-blue-200 rounded-lg text-[10px] text-blue-600 font-bold">+ Opção</button>
               </div>
             )}
-            <button onClick={() => setForm({ ...form, steps: form.steps.map(s => ({ ...s, columns: s.columns.map(c => ({ ...c, blocks: c.blocks.filter(b => b.id !== selectedBlock.id) })) })) })} className="w-full py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold uppercase">Remover Bloco</button>
+            <div className="flex gap-2">
+              <button onClick={(e) => duplicateBlock(e, selectedBlock, activeStepId, activeStep.columns[0].id)} className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-2"><Copy size={14} /> Duplicar</button>
+              <button onClick={() => setForm({ ...form, steps: form.steps.map(s => ({ ...s, columns: s.columns.map(c => ({ ...c, blocks: c.blocks.filter(b => b.id !== selectedBlock.id) })) })) })} className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold uppercase">Remover</button>
+            </div>
           </div>
         ) : (
           <div className="text-center py-20 text-gray-300 font-bold italic">Selecione um bloco para editar</div>
