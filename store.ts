@@ -56,17 +56,54 @@ class FirebaseStorageService {
     }
   }
 
-  async getForms(orgId?: string) {
+  async getForms(orgId?: string, userEmail?: string) {
     try {
-      let q = query(collection(firestore, this.FORMS));
+      const formsRef = collection(firestore, this.FORMS);
+      let forms: Form[] = [];
+
+      // Fetch forms by orgId
       if (orgId && orgId !== 'org-admin') {
-        q = query(q, where("orgId", "==", orgId));
+        const qOrg = query(formsRef, where("orgId", "==", orgId));
+        const orgSnapshot = await getDocs(qOrg);
+        forms = orgSnapshot.docs.map(doc => doc.data() as Form);
+      } else {
+        const querySnapshot = await getDocs(formsRef);
+        forms = querySnapshot.docs.map(doc => doc.data() as Form);
       }
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => doc.data() as Form);
+
+      // If userEmail is provided, also fetch forms shared with this email
+      if (userEmail) {
+        const qShared = query(formsRef, where("sharedWith", "array-contains", userEmail));
+        const sharedSnapshot = await getDocs(qShared);
+        const sharedForms = sharedSnapshot.docs.map(doc => doc.data() as Form);
+
+        // Combine and remove duplicates (by ID)
+        const combined = [...forms, ...sharedForms];
+        const unique = Array.from(new Map(combined.map(f => [f.id, f])).values());
+        return unique;
+      }
+
+      return forms;
     } catch (e) {
       console.error("Error fetching forms:", e);
       return [];
+    }
+  }
+
+  async shareForm(formId: string, email: string) {
+    try {
+      const formRef = doc(firestore, this.FORMS, formId);
+      const formDoc = await getDoc(formRef);
+      if (formDoc.exists()) {
+        const formData = formDoc.data() as Form;
+        const sharedWith = formData.sharedWith || [];
+        if (!sharedWith.includes(email)) {
+          await setDoc(formRef, { ...formData, sharedWith: [...sharedWith, email] }, { merge: true });
+        }
+      }
+    } catch (e) {
+      console.error("Error sharing form:", e);
+      throw e;
     }
   }
 

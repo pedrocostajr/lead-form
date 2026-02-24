@@ -1,5 +1,5 @@
 
-// LeadForm Pro - Prisma Database Schema
+// Lead Form - Prisma Database Schema
 
 datasource db {
   provider = "postgresql"

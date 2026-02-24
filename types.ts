@@ -88,6 +88,7 @@ export interface Form {
     pixelId?: string;
     gtmId?: string;
   };
+  sharedWith?: string[];
   createdAt: string;
   updatedAt: string;
 }

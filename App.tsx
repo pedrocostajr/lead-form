@@ -116,7 +116,7 @@ const Sidebar = () => {
       <div className="p-6 border-b">
         <h1 className="text-xl font-bold text-blue-600 flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">L</div>
-          LeadForm Pro
+          Lead Form
         </h1>
       </div>
       <nav className="flex-1 p-4 space-y-1">
@@ -163,7 +163,7 @@ const DashboardView = () => {
       try {
         const [l, f, i] = await Promise.all([
           db.getLeads(user?.orgId),
-          db.getForms(user?.orgId),
+          db.getForms(user?.orgId, user?.email),
           db.getIntegrations(user?.orgId)
         ]);
         setLeads(l || []);
@@ -699,7 +699,7 @@ const PublicFormView = () => {
           {isLoading ? 'Enviando...' : currentStepIndex === steps.length - 1 ? 'Enviar Agora' : 'Próximo Passo'}
           {!isLoading && <ChevronRight size={20} />}
         </button>
-        <p className="text-center text-[8px] font-bold text-gray-300 uppercase tracking-[4px] mt-6">LeadForm Pro Protection</p>
+        <p className="text-center text-[8px] font-bold text-gray-300 uppercase tracking-[4px] mt-6">Lead Form Protection</p>
       </div>
     </div>
   );
@@ -1134,7 +1134,7 @@ const LoginView = () => {
       <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-[40px] shadow-2xl shadow-blue-100 border border-blue-50">
         <div className="text-center space-y-2">
           <div className="w-16 h-16 bg-blue-600 rounded-[24px] flex items-center justify-center mx-auto text-white font-black text-3xl shadow-xl shadow-blue-200 mb-6">L</div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight">LeadForm Pro</h2>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tight">Lead Form</h2>
           <p className="text-gray-500 font-medium">Capture leads com fluxos de alta conversão.</p>
         </div>
         <div className="space-y-4">
@@ -1378,7 +1378,7 @@ const FormListView = () => {
   useEffect(() => {
     const fetchForms = async () => {
       try {
-        const f = await db.getForms(user?.orgId);
+        const f = await db.getForms(user?.orgId, user?.email);
         setForms(f || []);
       } catch (error) {
         console.error('Erro ao buscar lista de formulários:', error);
@@ -1408,6 +1408,7 @@ const FormListView = () => {
         id: `form-${Date.now()}`,
         name: `${form.name} (Cópia)`,
         slug: `${form.slug}-copia-${Date.now()}`,
+        sharedWith: [], // Reset shared with on duplicate
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -1419,6 +1420,21 @@ const FormListView = () => {
     }
   };
 
+  const [sharingForm, setSharingForm] = useState<Form | null>(null);
+  const [shareEmail, setShareEmail] = useState('');
+
+  const handleShare = async () => {
+    if (!sharingForm || !shareEmail) return;
+    try {
+      await db.shareForm(sharingForm.id, shareEmail);
+      alert(`Formulário compartilhado com ${shareEmail}`);
+      setSharingForm(null);
+      setShareEmail('');
+    } catch (e) {
+      alert('Erro ao compartilhar formulário.');
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Formulários...</div>;
 
   return (
@@ -1427,6 +1443,35 @@ const FormListView = () => {
         <div><h2 className="text-4xl font-black text-gray-900 tracking-tight">Formulários</h2><p className="text-gray-500 font-medium">Capture leads com fluxos de alta conversão.</p></div>
         <button onClick={() => navigate('/dashboard/forms/new')} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-[20px] font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all"><Plus size={20} /> Novo Fluxo</button>
       </div>
+
+      {sharingForm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[40px] p-10 max-w-md w-full shadow-2xl space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-2xl font-black">Compartilhar Fluxo</h3>
+              <button onClick={() => setSharingForm(null)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            </div>
+            <p className="text-gray-500 font-medium">Insira o e-mail do usuário com quem deseja compartilhar o formulário <b>{sharingForm.name}</b>.</p>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">E-mail do destinatário</label>
+              <input
+                type="email"
+                value={shareEmail}
+                onChange={(e) => setShareEmail(e.target.value)}
+                placeholder="usuario@email.com"
+                className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium"
+              />
+            </div>
+            <button
+              onClick={handleShare}
+              className="w-full py-5 bg-blue-600 text-white rounded-3xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all"
+            >
+              Compartilhar Agora
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {forms.map(form => (
           <div key={form.id} onClick={() => navigate(`/dashboard/forms/${form.id}`)} className="bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm cursor-pointer hover:shadow-2xl hover:-translate-y-1.5 transition-all group relative">
@@ -1435,6 +1480,7 @@ const FormListView = () => {
             <div className="flex items-center justify-between border-t border-gray-50 pt-8 mt-8">
               <span className="text-[10px] font-bold text-green-600 uppercase bg-green-50 px-4 py-1.5 rounded-full tracking-widest">{form.status}</span>
               <div className="flex items-center gap-2">
+                <button onClick={(e) => { e.stopPropagation(); setSharingForm(form); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Compartilhar"><Share2 size={18} /></button>
                 <button onClick={(e) => handleDuplicate(e, form)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Duplicar"><Copy size={18} /></button>
                 <button onClick={(e) => handleDelete(e, form.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Excluir"><Trash2 size={18} /></button>
               </div>
@@ -1600,7 +1646,7 @@ const InstructionsView = () => {
     <div className="space-y-10 max-w-4xl">
       <header>
         <h2 className="text-3xl font-black text-gray-900 tracking-tight">Manual de Uso</h2>
-        <p className="text-gray-500 font-medium">Aprenda a dominar o LeadForm Pro e escalar suas capturas.</p>
+        <p className="text-gray-500 font-medium">Aprenda a dominar o Lead Form e escalar suas capturas.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
