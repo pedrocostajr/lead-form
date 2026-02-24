@@ -505,7 +505,18 @@ const PublicFormView = () => {
                   <div key={block.id} className="space-y-2">
                     {block.type === 'heading' && <h2 className={`font-bold text-gray-800 ${block.settings.level === 'h1' ? 'text-xl' : 'text-lg'}`}>{block.settings.label}</h2>}
                     {block.type === 'text' && <p className="text-sm text-gray-500 leading-relaxed">{block.settings.label}</p>}
-                    {block.type === 'image' && <img src={block.settings.src} className="w-full rounded-2xl shadow-sm" />}
+                    {block.type === 'image' && (
+                      <div className="w-full">
+                        {block.settings.src?.startsWith('<') ? (
+                          <div
+                            dangerouslySetInnerHTML={{ __html: block.settings.src }}
+                            className="w-full rounded-2xl overflow-hidden shadow-sm [&_iframe]:w-full [&_iframe]:aspect-video"
+                          />
+                        ) : (
+                          <img src={block.settings.src} className="w-full rounded-2xl shadow-sm" />
+                        )}
+                      </div>
+                    )}
 
                     {block.type === 'short_text' || block.type === 'email' || block.type === 'standard_contact' ? (
                       <div className="space-y-1.5">
@@ -645,7 +656,14 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                     {b.type === 'image' && (
                       <div className="space-y-1">
                         {b.settings.src ? (
-                          <img src={b.settings.src} alt="" className="w-full rounded-lg pointer-events-none" />
+                          b.settings.src.startsWith('<') ? (
+                            <div
+                              dangerouslySetInnerHTML={{ __html: b.settings.src }}
+                              className="w-full rounded-lg overflow-hidden [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:h-auto pointer-events-none"
+                            />
+                          ) : (
+                            <img src={b.settings.src} alt="" className="w-full rounded-lg pointer-events-none" />
+                          )
                         ) : (
                           <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase tracking-wider">Sem Imagem</div>
                         )}
@@ -706,17 +724,18 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                     className="w-full px-4 py-2 border rounded-xl outline-none text-xs font-mono"
                   />
                 </div>
-                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                  <p className="text-[10px] font-bold text-blue-600 uppercase mb-2">Dica do Canva</p>
-                  <p className="text-[11px] text-blue-700 leading-tight mb-3">Crie seu design no Canva, clique em "Compartilhar", selecione "Mais" e escolha "Incorporar" para pegar o link da imagem.</p>
-                  <a
-                    href="https://www.canva.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-2 bg-white text-blue-600 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:shadow-md transition-all"
-                  >
-                    <ImageIcon size={14} /> Abrir Canva
-                  </a>
+                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
+                  <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
+                    <span className="w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px]">!</span>
+                    Dica do Canva
+                  </div>
+                  <p className="text-[10px] text-blue-800 leading-relaxed font-medium">
+                    Para usar um design do Canva:<br />
+                    1. Clique em <b>Compartilhar</b><br />
+                    2. Mais {">"} <b>Incorporar (Embed)</b><br />
+                    3. Copie o <b>Código de incorporação HTML</b> e cole acima.
+                  </p>
+                  <a href="https://www.canva.com" target="_blank" className="block text-center py-2 bg-blue-600 text-white rounded-xl text-[10px] font-bold hover:bg-blue-700 transition-all">Abrir Canva</a>
                 </div>
               </div>
             )}
