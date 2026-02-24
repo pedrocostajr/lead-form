@@ -111,15 +111,30 @@ class FirebaseStorageService {
   }
 
   async saveLead(lead: Lead) {
-    await setDoc(doc(firestore, this.LEADS, lead.id), lead);
+    try {
+      await setDoc(doc(firestore, this.LEADS, lead.id), lead);
+    } catch (e) {
+      console.error("Error saving lead:", e);
+      throw e;
+    }
   }
 
   async saveForm(form: Form) {
-    await setDoc(doc(firestore, this.FORMS, form.id), form);
+    try {
+      await setDoc(doc(firestore, this.FORMS, form.id), form);
+    } catch (e) {
+      console.error("Error saving form:", e);
+      throw e;
+    }
   }
 
   async saveIntegration(integration: Integration) {
-    await setDoc(doc(firestore, this.INTEGRATIONS, integration.id), integration);
+    try {
+      await setDoc(doc(firestore, this.INTEGRATIONS, integration.id), integration);
+    } catch (e) {
+      console.error("Error saving integration:", e);
+      throw e;
+    }
   }
 
   async deleteIntegration(id: string) {

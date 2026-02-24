@@ -799,6 +799,7 @@ const FormDetailView = () => {
         clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar detalhe do formulário:', error);
+        alert('Erro ao carregar ou salvar formulário. Verifique se o Firestore está configurado em "Modo de Teste" no console do Firebase.');
       }
     };
     fetchForm();
