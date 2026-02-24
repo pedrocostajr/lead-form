@@ -692,6 +692,7 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
   const [activeStepId, setActiveStepId] = useState(form.steps[0]?.id || '');
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [isAddingBlock, setIsAddingBlock] = useState<{ stepId: string, colId: string } | null>(null);
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
 
   const activeStep = form.steps.find(s => s.id === activeStepId) || form.steps[0];
 
@@ -884,8 +885,22 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {form.steps.map((s, i) => (
             <div key={s.id} onClick={() => setActiveStepId(s.id)} className={`group relative p-3 rounded-xl border cursor-pointer transition-all ${activeStepId === s.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white text-gray-600'}`}>
-              <span className="text-xs font-bold truncate block pr-10">{i + 1}. {s.title}</span>
+              {editingStepId === s.id ? (
+                <input
+                  autoFocus
+                  value={s.title}
+                  onChange={(e) => setForm({ ...form, steps: form.steps.map(step => step.id === s.id ? { ...step, title: e.target.value } : step) })}
+                  onBlur={() => setEditingStepId(null)}
+                  onKeyDown={(e) => e.key === 'Enter' && setEditingStepId(null)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs font-bold bg-white text-gray-900 border-none rounded px-1 w-[calc(100%-40px)] outline-none"
+                />
+              ) : (
+                <span className="text-xs font-bold truncate block pr-16">{i + 1}. {s.title}</span>
+              )}
+
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={(e) => { e.stopPropagation(); setEditingStepId(s.id); }} className="p-1 hover:bg-black/10 rounded" title="Renomear Etapa"><Edit size={12} /></button>
                 <button onClick={(e) => duplicateStep(e, s, i)} className="p-1 hover:bg-black/10 rounded" title="Duplicar Etapa"><Copy size={12} /></button>
                 <div className="flex flex-col gap-0.5">
                   {i > 0 && <button onClick={(e) => moveStep(e, i, 'up')} className="p-0.5 hover:bg-black/10 rounded"><ArrowUp size={10} /></button>}
