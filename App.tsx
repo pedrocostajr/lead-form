@@ -260,6 +260,36 @@ const LeadListView = () => {
     fetchData();
   }, []);
 
+  const exportToCSV = () => {
+    if (leads.length === 0) return;
+
+    const headers = ['ID', 'Nome', 'Email', 'Telefone', 'Formulario', 'Status', 'Data', 'Campos Adicionais'];
+    const rows = leads.map(l => [
+      l.id,
+      l.data.name || l.data.full_name || '',
+      l.data.email || '',
+      l.data.phone || '',
+      forms.find(f => f.id === l.formId)?.name || l.formId,
+      l.status,
+      new Date(l.createdAt).toLocaleString(),
+      JSON.stringify(Object.fromEntries(Object.entries(l.data).filter(([k]) => !['name', 'email', 'phone', 'full_name'].includes(k))))
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `leads-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Leads...</div>;
 
   return (
@@ -269,7 +299,10 @@ const LeadListView = () => {
           <h2 className="text-3xl font-bold text-gray-900">Leads</h2>
           <p className="text-gray-500 font-medium">Gerencie sua base de contatos capturados.</p>
         </div>
-        <button className="flex items-center gap-2 bg-gray-100 px-6 py-3 rounded-2xl font-bold hover:bg-gray-200 transition-all">
+        <button
+          onClick={exportToCSV}
+          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+        >
           <Download size={18} /> Exportar CSV
         </button>
       </header>
@@ -289,8 +322,14 @@ const LeadListView = () => {
             {leads.map(lead => (
               <tr key={lead.id} className="hover:bg-gray-50/50">
                 <td className="px-8 py-6">
-                  <span className="font-bold text-gray-900">{lead.data.name || lead.data.full_name || 'Desconhecido'}</span>
-                  <p className="text-xs text-gray-400">{lead.data.email || lead.data.phone}</p>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-900">{lead.data.name || lead.data.full_name || 'Desconhecido'}</span>
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      {lead.data.email && <span>{lead.data.email}</span>}
+                      {lead.data.email && lead.data.phone && <span className="w-1 h-1 bg-gray-200 rounded-full" />}
+                      {lead.data.phone && <span className="font-medium text-blue-600">{lead.data.phone}</span>}
+                    </div>
+                  </div>
                 </td>
                 <td className="px-8 py-6">
                   <div className="flex flex-wrap gap-1">
@@ -1092,7 +1131,19 @@ const LeadsByFormView = ({ formId }: { formId: string }) => {
         <thead className="bg-gray-50"><tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><th className="px-8 py-4">Lead</th><th className="px-8 py-4">Data</th></tr></thead>
         <tbody className="divide-y divide-gray-100">
           {leads.map(l => (
-            <tr key={l.id}><td className="px-8 py-4 font-bold">{l.data.email || 'Anônimo'}</td><td className="px-8 py-4 text-xs text-gray-400">{new Date(l.createdAt).toLocaleDateString()}</td></tr>
+            <tr key={l.id} className="hover:bg-gray-50/50">
+              <td className="px-8 py-4">
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-900">{l.data.name || l.data.full_name || l.data.email || 'Lead sem nome'}</span>
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium">
+                    {l.data.email && <span>{l.data.email}</span>}
+                    {l.data.email && l.data.phone && <span className="w-1 h-1 bg-gray-200 rounded-full" />}
+                    {l.data.phone && <span className="text-blue-600">{l.data.phone}</span>}
+                  </div>
+                </div>
+              </td>
+              <td className="px-8 py-4 text-xs text-gray-400 font-medium">{new Date(l.createdAt).toLocaleDateString()}</td>
+            </tr>
           ))}
         </tbody>
       </table>
