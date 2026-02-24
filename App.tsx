@@ -793,6 +793,29 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
     setForm({ ...form, steps: newSteps });
   };
 
+  const duplicateStep = (e: React.MouseEvent, step: FormStep, index: number) => {
+    e.stopPropagation();
+    const newStepId = `step-${Date.now()}`;
+    const newStep: FormStep = {
+      ...step,
+      id: newStepId,
+      title: `${step.title} (Cópia)`,
+      columns: step.columns.map(col => ({
+        ...col,
+        id: `col-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        blocks: col.blocks.map(block => ({
+          ...block,
+          id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+        }))
+      }))
+    };
+
+    const newSteps = [...form.steps];
+    newSteps.splice(index + 1, 0, newStep);
+    setForm({ ...form, steps: newSteps });
+    setActiveStepId(newStepId);
+  };
+
   const [draggedBlock, setDraggedBlock] = useState<{ blockId: string, stepId: string, colId: string } | null>(null);
 
   const handleDragStart = (e: React.DragEvent, blockId: string, stepId: string, colId: string) => {
@@ -861,10 +884,13 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {form.steps.map((s, i) => (
             <div key={s.id} onClick={() => setActiveStepId(s.id)} className={`group relative p-3 rounded-xl border cursor-pointer transition-all ${activeStepId === s.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white text-gray-600'}`}>
-              <span className="text-xs font-bold truncate block pr-6">{i + 1}. {s.title}</span>
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                {i > 0 && <button onClick={(e) => moveStep(e, i, 'up')} className="p-0.5 hover:bg-black/10 rounded"><ArrowUp size={12} /></button>}
-                {i < form.steps.length - 1 && <button onClick={(e) => moveStep(e, i, 'down')} className="p-0.5 hover:bg-black/10 rounded"><ArrowDown size={12} /></button>}
+              <span className="text-xs font-bold truncate block pr-10">{i + 1}. {s.title}</span>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={(e) => duplicateStep(e, s, i)} className="p-1 hover:bg-black/10 rounded" title="Duplicar Etapa"><Copy size={12} /></button>
+                <div className="flex flex-col gap-0.5">
+                  {i > 0 && <button onClick={(e) => moveStep(e, i, 'up')} className="p-0.5 hover:bg-black/10 rounded"><ArrowUp size={10} /></button>}
+                  {i < form.steps.length - 1 && <button onClick={(e) => moveStep(e, i, 'down')} className="p-0.5 hover:bg-black/10 rounded"><ArrowDown size={10} /></button>}
+                </div>
               </div>
             </div>
           ))}
