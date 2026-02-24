@@ -62,7 +62,7 @@ class FirebaseStorageService {
       let forms: Form[] = [];
 
       // Fetch forms by orgId
-      if (orgId && orgId !== 'org-admin') {
+      if (orgId) {
         const qOrg = query(formsRef, where("orgId", "==", orgId));
         const orgSnapshot = await getDocs(qOrg);
         forms = orgSnapshot.docs.map(doc => doc.data() as Form);
@@ -133,7 +133,7 @@ class FirebaseStorageService {
       const leadsRef = collection(firestore, this.LEADS);
 
       // Fetch leads by orgId
-      if (orgId && orgId !== 'org-admin') {
+      if (orgId) {
         const qOrg = query(leadsRef, where("orgId", "==", orgId), orderBy("createdAt", "desc"));
         const orgSnapshot = await getDocs(qOrg);
         leads = orgSnapshot.docs.map(doc => doc.data() as Lead);
@@ -188,7 +188,7 @@ class FirebaseStorageService {
   async getIntegrations(orgId?: string) {
     try {
       let q = query(collection(firestore, this.INTEGRATIONS));
-      if (orgId && orgId !== 'org-admin') {
+      if (orgId) {
         q = query(q, where("orgId", "==", orgId));
       }
       const querySnapshot = await getDocs(q);
