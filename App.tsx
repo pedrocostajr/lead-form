@@ -30,13 +30,31 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   });
 
   const login = async (email: string) => {
-    const users = await db.getUsers();
-    const found = users.find(u => u.email === email);
-    if (found) {
-      setUser(found);
-      localStorage.setItem('lp_session', JSON.stringify(found));
-    } else {
-      alert('E-mail não encontrado. Use: contato@leadsign.com.br');
+    try {
+      const users = await db.getUsers();
+      let found = users.find(u => u.email === email);
+
+      if (!found && email === 'contato@leadsign.com.br') {
+        const newUser: User = {
+          id: 'user-1',
+          name: 'Administrador',
+          email: 'contato@leadsign.com.br',
+          role: Role.ORG_ADMIN,
+          orgId: 'org-1',
+          createdAt: new Date().toISOString()
+        };
+        found = newUser;
+      }
+
+      if (found) {
+        setUser(found);
+        localStorage.setItem('lp_session', JSON.stringify(found));
+      } else {
+        alert('E-mail não encontrado. Use: contato@leadsign.com.br');
+      }
+    } catch (e) {
+      console.error("Login error:", e);
+      alert("Erro ao conectar com o banco de dados.");
     }
   };
 
