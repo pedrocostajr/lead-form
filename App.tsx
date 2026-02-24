@@ -599,15 +599,27 @@ const PublicFormView = () => {
       const integrations = currentIntegrations.filter(i => form.settings.webhookIds.includes(i.id));
       const promises = integrations.map(integration => {
         if (!integration.url) return Promise.resolve();
-        console.log(`Disparando webhook: ${integration.name} -> ${integration.url}`);
+        console.log(`[Webhook] Disparando para: ${integration.name} (${integration.url})`);
+        console.log(`[Webhook] Payload:`, JSON.stringify(lead, null, 2));
+
         return fetch(integration.url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(lead),
-          keepalive: true // Permite que a requisição continue mesmo se a página mudar
-        }).catch(err => console.error('Erro no webhook:', err));
+          keepalive: true,
+          mode: 'cors',
+          credentials: 'omit'
+        })
+          .then(res => console.log(`[Webhook] Resposta: ${res.status} ${res.statusText}`))
+          .catch(err => console.error('[Webhook] Erro critico:', err));
       });
       await Promise.allSettled(promises);
+    }
+
+    // Diagnostic Delay: Se houver redirecionamento, damos 1.5s extras para o browser terminar o handshake CORS/POST
+    if (form.settings.redirectUrl) {
+      console.log(`[System] Aguardando 1.5s para garantir entrega do webhook antes de redirecionar...`);
+      await new Promise(resolve => setTimeout(resolve, 1500));
     }
 
     setIsLoading(false);
