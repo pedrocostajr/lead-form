@@ -14,6 +14,15 @@ import { User, Role, Form, FormStatus, FormStep, FormBlock, BlockType, Column, S
 import { db } from './store';
 import { ICONS } from './constants';
 
+const cleanCanvaHtml = (html: string | undefined) => {
+  if (!html) return '';
+  if (html.trim().startsWith('<div')) {
+    const match = html.match(/<div[\s\S]*?<\/div>/);
+    return match ? match[0] : html;
+  }
+  return html;
+};
+
 // --- Auth Context ---
 interface AuthContextType {
   user: User | null;
@@ -525,9 +534,9 @@ const PublicFormView = () => {
                     {block.type === 'text' && <p className="text-sm text-gray-500 leading-relaxed">{block.settings.label}</p>}
                     {block.type === 'image' && (
                       <div className="w-full">
-                        {block.settings.src?.startsWith('<') ? (
+                        {block.settings.src?.trim().startsWith('<') ? (
                           <div
-                            dangerouslySetInnerHTML={{ __html: block.settings.src }}
+                            dangerouslySetInnerHTML={{ __html: cleanCanvaHtml(block.settings.src) }}
                             className="w-full rounded-2xl overflow-hidden shadow-sm [&_iframe]:w-full [&_iframe]:aspect-video"
                           />
                         ) : (
@@ -682,9 +691,9 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                     {b.type === 'image' && (
                       <div className="space-y-1">
                         {b.settings.src ? (
-                          b.settings.src.startsWith('<') ? (
+                          b.settings.src.trim().startsWith('<') ? (
                             <div
-                              dangerouslySetInnerHTML={{ __html: b.settings.src }}
+                              dangerouslySetInnerHTML={{ __html: cleanCanvaHtml(b.settings.src) }}
                               className="w-full rounded-lg overflow-hidden [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:h-auto pointer-events-none"
                             />
                           ) : (
