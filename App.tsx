@@ -468,6 +468,7 @@ const PublicFormView = () => {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
     const fetchForm = async () => {
@@ -511,12 +512,29 @@ const PublicFormView = () => {
         }
       } catch (error) {
         console.error('Erro ao buscar formulário público:', error);
+      } finally {
+        setPageLoading(false);
       }
     };
     fetchForm();
   }, [orgSlug, formSlug]);
 
-  if (!form) return <div className="min-h-screen flex items-center justify-center font-bold">404 - Formulário não encontrado</div>;
+  if (pageLoading) return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8">
+      <div className="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4" />
+      <p className="text-gray-400 font-bold uppercase tracking-[4px] text-[10px]">Carregando Fluxo...</p>
+    </div>
+  );
+
+  if (!form) return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8 text-center">
+      <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
+        <AlertCircle size={40} />
+      </div>
+      <h2 className="text-2xl font-black text-gray-900 mb-2">Ops! Link Inválido</h2>
+      <p className="text-gray-500 font-medium max-w-xs">Não encontramos o formulário que você está procurando. Verifique se o link está correto.</p>
+    </div>
+  );
 
   const steps = form.steps;
   const currentStep = steps[currentStepIndex];
