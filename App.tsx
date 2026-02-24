@@ -603,7 +603,8 @@ const PublicFormView = () => {
         return fetch(integration.url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(lead)
+          body: JSON.stringify(lead),
+          keepalive: true // Permite que a requisição continue mesmo se a página mudar
         }).catch(err => console.error('Erro no webhook:', err));
       });
       await Promise.allSettled(promises);
