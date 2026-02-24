@@ -26,6 +26,8 @@ const cleanCanvaHtml = (html: string | undefined) => {
 // --- Auth Context ---
 interface AuthContextType {
   user: User | null;
+  isGlobalView: boolean;
+  setGlobalView: (value: boolean) => void;
   login: (email: string) => void;
   logout: () => void;
 }
@@ -37,6 +39,15 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     const saved = localStorage.getItem('lp_session');
     return saved ? JSON.parse(saved) : null;
   });
+
+  const [isGlobalView, setIsGlobalView] = useState(() => {
+    return localStorage.getItem('lp_global_view') === 'true';
+  });
+
+  const setGlobalView = (value: boolean) => {
+    setIsGlobalView(value);
+    localStorage.setItem('lp_global_view', value.toString());
+  };
 
   const login = async (email: string, password?: string) => {
     try {
@@ -80,7 +91,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, isGlobalView, setGlobalView, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -95,7 +106,7 @@ const useAuth = () => {
 // --- Layout & Sidebar ---
 
 const Sidebar = () => {
-  const { logout, user } = useAuth();
+  const { logout, user, isGlobalView, setGlobalView } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -132,6 +143,20 @@ const Sidebar = () => {
           </button>
         ))}
       </nav>
+      {user?.role === Role.SUPER_ADMIN && (
+        <div className="p-4 border-t px-6">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Modo Global</span>
+            <button
+              onClick={() => setGlobalView(!isGlobalView)}
+              className={`w-10 h-5 rounded-full p-1 transition-colors ${isGlobalView ? 'bg-blue-600' : 'bg-gray-200'}`}
+            >
+              <div className={`w-3 h-3 bg-white rounded-full transition-transform ${isGlobalView ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <p className="text-[9px] text-gray-400 mt-1">Ver dados de todas as orgs</p>
+        </div>
+      )}
       <div className="p-4 border-t">
         <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium">
           {ICONS.Logout}
@@ -152,7 +177,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => (
 // --- Dashboard View ---
 
 const DashboardView = () => {
-  const { user } = useAuth();
+  const { user, isGlobalView } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
   const [integrationsCount, setIntegrationsCount] = useState(0);
@@ -162,9 +187,9 @@ const DashboardView = () => {
     const fetchData = async () => {
       try {
         const [l, f, i] = await Promise.all([
-          db.getLeads(user?.orgId, user?.email),
-          db.getForms(user?.orgId, user?.email),
-          db.getIntegrations(user?.orgId)
+          db.getLeads(user?.orgId, user?.email, isGlobalView),
+          db.getForms(user?.orgId, user?.email, isGlobalView),
+          db.getIntegrations(user?.orgId, isGlobalView)
         ]);
         setLeads(l || []);
         setForms(f || []);
@@ -243,7 +268,7 @@ const DashboardView = () => {
 // --- Leads View ---
 
 const LeadListView = () => {
-  const { user } = useAuth();
+  const { user, isGlobalView } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,8 +277,8 @@ const LeadListView = () => {
     const fetchData = async () => {
       try {
         const [l, f] = await Promise.all([
-          db.getLeads(user?.orgId, user?.email),
-          db.getForms(user?.orgId, user?.email)
+          db.getLeads(user?.orgId, user?.email, isGlobalView),
+          db.getForms(user?.orgId, user?.email, isGlobalView)
         ]);
         setLeads(l || []);
         setForms(f || []);
@@ -568,8 +593,8 @@ const PublicFormView = () => {
       (window as any).fbq('track', 'Lead');
     }
 
-    // Real Webhook Dispatch
-    const currentIntegrations = await db.getIntegrations();
+    // Real Webhook Dispatch (Isolated by orgId)
+    const currentIntegrations = await db.getIntegrations(form.orgId);
     if (form.settings.webhookIds && form.settings.webhookIds.length > 0) {
       const integrations = currentIntegrations.filter(i => form.settings.webhookIds.includes(i.id));
       integrations.forEach(integration => {
@@ -1223,7 +1248,7 @@ const SignupView = () => {
 };
 
 const FormDetailView = () => {
-  const { user } = useAuth();
+  const { user, isGlobalView } = useAuth();
   const { formId } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState<Form | null>(null);
@@ -1273,7 +1298,7 @@ const FormDetailView = () => {
           return;
         }
 
-        const forms = await db.getForms(user?.orgId, user?.email);
+        const forms = await db.getForms(user?.orgId, user?.email, isGlobalView);
         const found = (forms || []).find(f => f.id === formId);
         if (found) setForm(found);
       } catch (error) {
@@ -1370,7 +1395,7 @@ const FormDetailView = () => {
 };
 
 const FormListView = () => {
-  const { user } = useAuth();
+  const { user, isGlobalView } = useAuth();
   const navigate = useNavigate();
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1378,7 +1403,7 @@ const FormListView = () => {
   useEffect(() => {
     const fetchForms = async () => {
       try {
-        const f = await db.getForms(user?.orgId, user?.email);
+        const f = await db.getForms(user?.orgId, user?.email, isGlobalView);
         setForms(f || []);
       } catch (error) {
         console.error('Erro ao buscar lista de formulários:', error);

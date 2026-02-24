@@ -56,19 +56,19 @@ class FirebaseStorageService {
     }
   }
 
-  async getForms(orgId?: string, userEmail?: string) {
+  async getForms(orgId?: string, userEmail?: string, isGlobal: boolean = false) {
     try {
       const formsRef = collection(firestore, this.FORMS);
       let forms: Form[] = [];
 
       // Fetch forms by orgId
-      if (orgId) {
+      if (isGlobal) {
+        const querySnapshot = await getDocs(formsRef);
+        forms = querySnapshot.docs.map(doc => doc.data() as Form);
+      } else if (orgId) {
         const qOrg = query(formsRef, where("orgId", "==", orgId));
         const orgSnapshot = await getDocs(qOrg);
         forms = orgSnapshot.docs.map(doc => doc.data() as Form);
-      } else {
-        const querySnapshot = await getDocs(formsRef);
-        forms = querySnapshot.docs.map(doc => doc.data() as Form);
       }
 
       // If userEmail is provided, also fetch forms shared with this email
@@ -127,25 +127,25 @@ class FirebaseStorageService {
     }
   }
 
-  async getLeads(orgId?: string, userEmail?: string) {
+  async getLeads(orgId?: string, userEmail?: string, isGlobal: boolean = false) {
     try {
       let leads: Lead[] = [];
       const leadsRef = collection(firestore, this.LEADS);
 
       // Fetch leads by orgId
-      if (orgId) {
+      if (isGlobal) {
+        const querySnapshot = await getDocs(query(leadsRef, orderBy("createdAt", "desc")));
+        leads = querySnapshot.docs.map(doc => doc.data() as Lead);
+      } else if (orgId) {
         const qOrg = query(leadsRef, where("orgId", "==", orgId), orderBy("createdAt", "desc"));
         const orgSnapshot = await getDocs(qOrg);
         leads = orgSnapshot.docs.map(doc => doc.data() as Lead);
-      } else {
-        const querySnapshot = await getDocs(query(leadsRef, orderBy("createdAt", "desc")));
-        leads = querySnapshot.docs.map(doc => doc.data() as Lead);
       }
 
       // If userEmail is provided, also fetch leads for shared forms
       if (userEmail) {
         // First get shared forms
-        const sharedForms = await this.getForms(undefined, userEmail);
+        const sharedForms = await this.getForms(undefined, userEmail, isGlobal);
         const sharedOnly = sharedForms.filter(f => f.orgId !== orgId);
 
         if (sharedOnly.length > 0) {
@@ -185,11 +185,15 @@ class FirebaseStorageService {
     }
   }
 
-  async getIntegrations(orgId?: string) {
+  async getIntegrations(orgId?: string, isGlobal: boolean = false) {
     try {
       let q = query(collection(firestore, this.INTEGRATIONS));
-      if (orgId) {
+      if (isGlobal) {
+        // Fetch all
+      } else if (orgId) {
         q = query(q, where("orgId", "==", orgId));
+      } else {
+        return []; // Security return
       }
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as Integration);
