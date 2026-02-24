@@ -43,12 +43,13 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       const users = await db.getUsers();
       let found = users.find(u => u.email === email);
 
-      // Bypass especial para o admin mestre (sem senha por enquanto para seu acesso)
+      // Bypass especial para o admin mestre com senha fixa
       if (!found && email === 'contato@leadsign.com.br') {
         const admin: User = {
           id: 'admin-1',
           orgId: 'org-admin',
           email: 'contato@leadsign.com.br',
+          password: 'Home170861#',
           name: 'Super Admin',
           role: Role.SUPER_ADMIN,
           status: 'APPROVED',
