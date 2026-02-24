@@ -32,6 +32,20 @@ class FirebaseStorageService {
     }
   }
 
+  async getUserByEmail(email: string) {
+    try {
+      const q = query(collection(firestore, this.USERS), where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data() as User;
+      }
+      return null;
+    } catch (e) {
+      console.error("Error fetching user by email:", e);
+      return null;
+    }
+  }
+
   async getUsers() {
     try {
       const querySnapshot = await getDocs(collection(firestore, this.USERS));
@@ -45,7 +59,7 @@ class FirebaseStorageService {
   async getForms(orgId?: string) {
     try {
       let q = query(collection(firestore, this.FORMS));
-      if (orgId) {
+      if (orgId && orgId !== 'org-admin') {
         q = query(q, where("orgId", "==", orgId));
       }
       const querySnapshot = await getDocs(q);
@@ -79,8 +93,8 @@ class FirebaseStorageService {
   async getLeads(orgId?: string) {
     try {
       let q = query(collection(firestore, this.LEADS), orderBy("createdAt", "desc"));
-      if (orgId) {
-        q = query(q, where("orgId", "==", orgId), orderBy("createdAt", "desc"));
+      if (orgId && orgId !== 'org-admin') {
+        q = query(collection(firestore, this.LEADS), where("orgId", "==", orgId), orderBy("createdAt", "desc"));
       }
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as Lead);
@@ -109,7 +123,7 @@ class FirebaseStorageService {
   async getIntegrations(orgId?: string) {
     try {
       let q = query(collection(firestore, this.INTEGRATIONS));
-      if (orgId) {
+      if (orgId && orgId !== 'org-admin') {
         q = query(q, where("orgId", "==", orgId));
       }
       const querySnapshot = await getDocs(q);

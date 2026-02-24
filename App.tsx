@@ -40,8 +40,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   const login = async (email: string, password?: string) => {
     try {
-      const users = await db.getUsers();
-      let found = users.find(u => u.email === email);
+      let found = await db.getUserByEmail(email);
 
       // Bypass especial para o admin mestre com senha fixa
       if (!found && email === 'contato@leadsign.com.br') {
@@ -152,6 +151,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => (
 // --- Dashboard View ---
 
 const DashboardView = () => {
+  const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
   const [integrationsCount, setIntegrationsCount] = useState(0);
@@ -159,20 +159,15 @@ const DashboardView = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const timeout = setTimeout(() => {
-        setLoading(false);
-      }, 5000); // Força saída do carregamento em 5s caso o Firebase trave
-
       try {
         const [l, f, i] = await Promise.all([
-          db.getLeads(),
-          db.getForms(),
-          db.getIntegrations()
+          db.getLeads(user?.orgId),
+          db.getForms(user?.orgId),
+          db.getIntegrations(user?.orgId)
         ]);
         setLeads(l || []);
         setForms(f || []);
         setIntegrationsCount((i || []).length);
-        clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar dados do Dashboard:', error);
       } finally {
@@ -180,7 +175,7 @@ const DashboardView = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [user]);
 
   if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Dashboard...</div>;
 
@@ -254,8 +249,6 @@ const LeadListView = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const timeout = setTimeout(() => setLoading(false), 5000);
-
       try {
         const [l, f] = await Promise.all([
           db.getLeads(user?.orgId),
@@ -263,7 +256,6 @@ const LeadListView = () => {
         ]);
         setLeads(l || []);
         setForms(f || []);
-        clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar leads:', error);
       } finally {
@@ -1074,10 +1066,6 @@ const FormDetailView = () => {
 
   useEffect(() => {
     const fetchForm = async () => {
-      const timeout = setTimeout(() => {
-        if (!form) navigate('/dashboard/forms');
-      }, 7000);
-
       try {
         if (formId === 'new') {
           const newForm: Form = {
@@ -1107,7 +1095,6 @@ const FormDetailView = () => {
         const forms = await db.getForms(user?.orgId);
         const found = (forms || []).find(f => f.id === formId);
         if (found) setForm(found);
-        clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar detalhe do formulário:', error);
         alert('Erro ao carregar ou salvar formulário. Verifique se o Firestore está configurado em "Modo de Teste" no console do Firebase.');
@@ -1209,11 +1196,9 @@ const FormListView = () => {
 
   useEffect(() => {
     const fetchForms = async () => {
-      const timeout = setTimeout(() => setLoading(false), 5000);
       try {
         const f = await db.getForms(user?.orgId);
         setForms(f || []);
-        clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar lista de formulários:', error);
       } finally {
