@@ -641,11 +641,25 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
   };
 
   const addBlock = (type: BlockType, stepId: string, colId: string) => {
+    let label = 'Novo Bloco';
+    let placeholder = '';
+    let mappingKey = '';
+
+    if (type === 'heading') label = 'Título';
+    else if (type === 'text') label = 'Descrição ou texto explicativo';
+    else if (type === 'short_text') { label = 'Nome'; placeholder = 'Digite seu nome'; mappingKey = 'name'; }
+    else if (type === 'email') { label = 'E-mail'; placeholder = 'seu@email.com'; mappingKey = 'email'; }
+    else if (type === 'standard_contact') { label = 'WhatsApp'; placeholder = '(11) 99999-9999'; mappingKey = 'phone'; }
+    else if (type === 'single_choice') label = 'Pergunta de múltipla escolha';
+    else if (type === 'button') label = 'Enviar dados';
+
     const newBlock: FormBlock = {
       id: `block-${Date.now()}`,
       type,
       settings: {
-        label: type.includes('choice') || type.includes('text') ? 'Pergunta sem título' : 'Novo Bloco',
+        label,
+        placeholder,
+        mappingKey,
         required: true,
         src: type === 'image' ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop' : undefined,
         options: type.includes('choice') ? ['Opção 1', 'Opção 2'] : undefined,
@@ -732,8 +746,33 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
             <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-xs space-y-4">
               <h4 className="font-bold border-b pb-2">Novo Bloco</h4>
               <div className="grid grid-cols-2 gap-2">
-                {['heading', 'text', 'image', 'short_text', 'single_choice', 'button'].map(type => (
-                  <button key={type} onClick={() => addBlock(type as BlockType, isAddingBlock.stepId, isAddingBlock.colId)} className="p-3 bg-gray-50 rounded-xl text-[10px] font-bold uppercase hover:bg-blue-50 transition-all">{type.replace('_', ' ')}</button>
+                {[
+                  { type: 'heading', label: 'Título' },
+                  { type: 'text', label: 'Texto' },
+                  { type: 'image', label: 'Imagem/Canva' },
+                  { type: 'short_text', label: 'Nome' },
+                  { type: 'email', label: 'E-mail' },
+                  { type: 'standard_contact', label: 'WhatsApp' },
+                  { type: 'single_choice', label: 'Opções' },
+                  { type: 'button', label: 'Botão' }
+                ].map(item => (
+                  <button
+                    key={item.type}
+                    onClick={() => addBlock(item.type as BlockType, isAddingBlock.stepId, isAddingBlock.colId)}
+                    className="p-3 bg-gray-50 rounded-2xl text-[10px] font-bold uppercase hover:bg-blue-600 hover:text-white transition-all flex flex-col items-center gap-2 border border-gray-100"
+                  >
+                    <div className="w-6 h-6 flex items-center justify-center opacity-60">
+                      {item.type === 'heading' && <Type size={16} />}
+                      {item.type === 'text' && <FileText size={16} />}
+                      {item.type === 'image' && <ImageIcon size={16} />}
+                      {item.type === 'short_text' && <UserPlus size={16} />}
+                      {item.type === 'email' && <Send size={16} />}
+                      {item.type === 'standard_contact' && <Smartphone size={16} />}
+                      {item.type === 'single_choice' && <Layers size={16} />}
+                      {item.type === 'button' && <Save size={16} />}
+                    </div>
+                    {item.label}
+                  </button>
                 ))}
               </div>
               <button onClick={() => setIsAddingBlock(null)} className="w-full py-2 text-xs text-gray-400">Cancelar</button>
