@@ -601,6 +601,7 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
       settings: {
         label: type.includes('choice') || type.includes('text') ? 'Pergunta sem título' : 'Novo Bloco',
         required: true,
+        src: type === 'image' ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop' : undefined,
         options: type.includes('choice') ? ['Opção 1', 'Opção 2'] : undefined,
       }
     };
