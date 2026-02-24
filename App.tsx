@@ -607,17 +607,6 @@ const PublicFormView = () => {
           }).catch(err => console.error('Erro no webhook:', err));
         }
       });
-    } else {
-      // Fallback: Dispatch to all active webhooks if none selected (simplification for prototype)
-      const allIntegrations = currentIntegrations.filter(i => i.isActive);
-      allIntegrations.forEach(integration => {
-        console.log(`Disparando webhook (global): ${integration.name} -> ${integration.url}`);
-        fetch(integration.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(lead)
-        }).catch(err => console.error('Erro no webhook:', err));
-      });
     }
 
     setIsLoading(false);
@@ -1254,6 +1243,7 @@ const FormDetailView = () => {
   const [form, setForm] = useState<Form | null>(null);
   const [activeTab, setActiveTab] = useState('builder');
   const [isSaving, setIsSaving] = useState(false);
+  const [availableIntegrations, setAvailableIntegrations] = useState<Integration[]>([]);
 
   const saveForm = async () => {
     if (!form || !user) return;
@@ -1301,13 +1291,17 @@ const FormDetailView = () => {
         const forms = await db.getForms(user?.orgId, user?.email, isGlobalView);
         const found = (forms || []).find(f => f.id === formId);
         if (found) setForm(found);
+
+        // Fetch integrations for this org
+        const ints = await db.getIntegrations(user?.orgId);
+        setAvailableIntegrations(ints || []);
       } catch (error) {
         console.error('Erro ao buscar detalhe do formulário:', error);
         alert('Erro ao carregar ou salvar formulário. Verifique se o Firestore está configurado em "Modo de Teste" no console do Firebase.');
       }
     };
     fetchForm();
-  }, [formId, navigate]);
+  }, [formId, navigate, user]);
 
   if (!form) return null;
 
@@ -1385,6 +1379,41 @@ const FormDetailView = () => {
                   onChange={e => setForm({ ...form, settings: { ...form.settings, gtmId: e.target.value } })}
                   className="w-full px-4 py-3 border rounded-xl outline-none"
                 />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <label className="text-[10px] font-bold text-gray-400 uppercase block mb-4">Webhooks Ativos para este Fluxo</label>
+              <div className="space-y-3">
+                {availableIntegrations.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">Nenhuma integração configurada no painel principal.</p>
+                ) : (
+                  availableIntegrations.map(int => (
+                    <div key={int.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-600/10 text-blue-600 rounded-lg flex items-center justify-center">
+                          <Webhook size={16} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{int.name}</p>
+                          <p className="text-[10px] text-gray-400 truncate w-40">{int.url}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const currentIds = form.settings.webhookIds || [];
+                          const newIds = currentIds.includes(int.id)
+                            ? currentIds.filter(id => id !== int.id)
+                            : [...currentIds, int.id];
+                          setForm({ ...form, settings: { ...form.settings, webhookIds: newIds } });
+                        }}
+                        className={`w-10 h-5 rounded-full p-1 transition-colors ${form.settings.webhookIds?.includes(int.id) ? 'bg-blue-600' : 'bg-gray-200'}`}
+                      >
+                        <div className={`w-3 h-3 bg-white rounded-full transition-transform ${form.settings.webhookIds?.includes(int.id) ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
