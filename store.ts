@@ -110,9 +110,25 @@ class FirebaseStorageService {
     }
   }
 
+  private sanitize(data: any): any {
+    const clean: any = {};
+    Object.keys(data).forEach(key => {
+      const value = data[key];
+      if (value === undefined) return;
+      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        clean[key] = this.sanitize(value);
+      } else if (Array.isArray(value)) {
+        clean[key] = value.map(item => (typeof item === 'object' && item !== null) ? this.sanitize(item) : item);
+      } else {
+        clean[key] = value;
+      }
+    });
+    return clean;
+  }
+
   async saveLead(lead: Lead) {
     try {
-      await setDoc(doc(firestore, this.LEADS, lead.id), lead);
+      await setDoc(doc(firestore, this.LEADS, lead.id), this.sanitize(lead));
     } catch (e) {
       console.error("Error saving lead:", e);
       throw e;
@@ -121,7 +137,7 @@ class FirebaseStorageService {
 
   async saveForm(form: Form) {
     try {
-      await setDoc(doc(firestore, this.FORMS, form.id), form);
+      await setDoc(doc(firestore, this.FORMS, form.id), this.sanitize(form));
     } catch (e) {
       console.error("Error saving form:", e);
       throw e;
@@ -130,7 +146,7 @@ class FirebaseStorageService {
 
   async saveIntegration(integration: Integration) {
     try {
-      await setDoc(doc(firestore, this.INTEGRATIONS, integration.id), integration);
+      await setDoc(doc(firestore, this.INTEGRATIONS, integration.id), this.sanitize(integration));
     } catch (e) {
       console.error("Error saving integration:", e);
       throw e;
@@ -138,7 +154,12 @@ class FirebaseStorageService {
   }
 
   async deleteIntegration(id: string) {
-    await deleteDoc(doc(firestore, this.INTEGRATIONS, id));
+    try {
+      await deleteDoc(doc(firestore, this.INTEGRATIONS, id));
+    } catch (e) {
+      console.error("Error deleting integration:", e);
+      throw e;
+    }
   }
 }
 
