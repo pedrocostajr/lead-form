@@ -104,6 +104,7 @@ const Sidebar = () => {
     { label: 'Formulários', icon: ICONS.Forms, path: '/dashboard/forms' },
     { label: 'Leads', icon: ICONS.Leads, path: '/dashboard/leads' },
     { label: 'Integrações', icon: ICONS.Integrations, path: '/dashboard/integrations' },
+    { label: 'Ajuda', icon: <HelpCircle size={20} />, path: '/dashboard/help' },
   ];
 
   if (user?.role === Role.SUPER_ADMIN) {
@@ -1594,6 +1595,76 @@ const AdminUsersView = () => {
   );
 };
 
+const InstructionsView = () => {
+  return (
+    <div className="space-y-10 max-w-4xl">
+      <header>
+        <h2 className="text-3xl font-black text-gray-900 tracking-tight">Manual de Uso</h2>
+        <p className="text-gray-500 font-medium">Aprenda a dominar o LeadForm Pro e escalar suas capturas.</p>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white p-8 rounded-[40px] border shadow-sm space-y-4">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-2">
+            <Layers size={24} />
+          </div>
+          <h3 className="text-xl font-bold">1. Criando seu Primeiro Fluxo</h3>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            Vá em <b>Formulários {">"} Novo Fluxo</b>. No editor, você pode adicionar blocos de texto, perguntas e imagens.
+            Use o ícone de <b>+</b> para adicionar blocos e arraste pela alça lateral para reordenar.
+          </p>
+          <div className="p-4 bg-gray-50 rounded-2xl text-xs text-gray-400 font-medium italic">
+            Dica: Use <b>múltiplas etapas</b> para não cansar o lead e aumentar a conversão.
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-[40px] border shadow-sm space-y-4">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-2">
+            <ImageIcon size={24} />
+          </div>
+          <h3 className="text-xl font-bold">2. Integrando com o Canva</h3>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            Para deixar seu form lindo, crie um design no Canva e use a opção <b>Compartilhar {">"} Incorporar (Embed)</b>.
+            Copie o código HTML e cole no campo de URL do bloco de Imagem.
+          </p>
+        </div>
+
+        <div className="bg-white p-8 rounded-[40px] border shadow-sm space-y-4">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-2">
+            <Webhook size={24} />
+          </div>
+          <h3 className="text-xl font-bold">3. Webhooks & Automação</h3>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            Cadastre sua URL de Webhook em <b>Integrações</b>. Depois, dentro das configurações do seu formulário,
+            selecione quais webhooks devem receber os novos leads.
+          </p>
+        </div>
+
+        <div className="bg-white p-8 rounded-[40px] border shadow-sm space-y-4">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-2">
+            <ShieldCheck size={24} />
+          </div>
+          <h3 className="text-xl font-bold">4. Rastreamento (Pixel/GTM)</h3>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            Nas configurações do fluxo, você pode inserir o seu <b>ID do Pixel do Facebook</b> ou <b>GTM ID</b>.
+            O sistema enviará eventos de `PageView` e `Lead` automaticamente.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-blue-600 p-10 rounded-[40px] text-white shadow-xl shadow-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-2 text-center md:text-left">
+          <h3 className="text-2xl font-bold">Dúvidas ou suporte técnico?</h3>
+          <p className="text-blue-100 font-medium">Estamos aqui para ajudar você a vender mais imóveis.</p>
+        </div>
+        <a href="https://wa.me/5511999999999" target="_blank" className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-bold hover:shadow-lg transition-all flex items-center gap-2">
+          <Smartphone size={20} /> Falar com Suporte
+        </a>
+      </div>
+    </div>
+  );
+};
+
 const PendingApprovalView = () => {
   const { logout } = useAuth();
   return (
@@ -1639,6 +1710,7 @@ const App: React.FC = () => (
         <Route path="/dashboard/leads" element={<ProtectedRoute><Layout><LeadListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/integrations" element={<ProtectedRoute><Layout><IntegrationListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/admin/users" element={<ProtectedRoute><Layout><AdminUsersView /></Layout></ProtectedRoute>} />
+        <Route path="/dashboard/help" element={<ProtectedRoute><Layout><InstructionsView /></Layout></ProtectedRoute>} />
         <Route path="/f/:orgSlug/:formSlug" element={<PublicFormView />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
