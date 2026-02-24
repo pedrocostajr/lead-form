@@ -120,15 +120,20 @@ const DashboardView = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      const timeout = setTimeout(() => {
+        setLoading(false);
+      }, 5000); // Força saída do carregamento em 5s caso o Firebase trave
+
       try {
         const [l, f, i] = await Promise.all([
           db.getLeads(),
           db.getForms(),
           db.getIntegrations()
         ]);
-        setLeads(l);
-        setForms(f);
-        setIntegrationsCount(i.length);
+        setLeads(l || []);
+        setForms(f || []);
+        setIntegrationsCount((i || []).length);
+        clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar dados do Dashboard:', error);
       } finally {
@@ -209,13 +214,16 @@ const LeadListView = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      const timeout = setTimeout(() => setLoading(false), 5000);
+
       try {
         const [l, f] = await Promise.all([
           db.getLeads(),
           db.getForms()
         ]);
-        setLeads(l);
-        setForms(f);
+        setLeads(l || []);
+        setForms(f || []);
+        clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar leads:', error);
       } finally {
@@ -292,7 +300,7 @@ const IntegrationListView = () => {
     const fetchIntegrations = async () => {
       try {
         const ints = await db.getIntegrations();
-        setIntegrations(ints);
+        setIntegrations(ints || []);
       } catch (error) {
         console.error('Erro ao buscar integrações:', error);
       }
@@ -755,6 +763,10 @@ const FormDetailView = () => {
 
   useEffect(() => {
     const fetchForm = async () => {
+      const timeout = setTimeout(() => {
+        if (!form) navigate('/dashboard/forms');
+      }, 7000);
+
       try {
         if (formId === 'new') {
           const newForm: Form = {
@@ -782,8 +794,9 @@ const FormDetailView = () => {
         }
 
         const forms = await db.getForms();
-        const found = forms.find(f => f.id === formId);
+        const found = (forms || []).find(f => f.id === formId);
         if (found) setForm(found);
+        clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar detalhe do formulário:', error);
       }
@@ -876,9 +889,11 @@ const FormListView = () => {
 
   useEffect(() => {
     const fetchForms = async () => {
+      const timeout = setTimeout(() => setLoading(false), 5000);
       try {
         const f = await db.getForms();
-        setForms(f);
+        setForms(f || []);
+        clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar lista de formulários:', error);
       } finally {
@@ -916,9 +931,11 @@ const LeadsByFormView = ({ formId }: { formId: string }) => {
 
   useEffect(() => {
     const fetchLeads = async () => {
+      const timeout = setTimeout(() => setLoading(false), 5000);
       try {
         const l = await db.getLeadsByForm(formId);
-        setLeads(l);
+        setLeads(l || []);
+        clearTimeout(timeout);
       } catch (error) {
         console.error('Erro ao buscar leads por formulário:', error);
       } finally {

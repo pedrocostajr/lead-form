@@ -53,15 +53,21 @@ class FirebaseStorageService {
   }
 
   async getFormBySlug(orgSlug: string, formSlug: string) {
-    const q = query(
-      collection(firestore, this.FORMS),
-      where("slug", "==", formSlug)
-    );
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      return querySnapshot.docs[0].data() as Form;
+    console.log(`Buscando formulário: ${formSlug}`);
+    try {
+      const q = query(
+        collection(firestore, this.FORMS),
+        where("slug", "==", formSlug)
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data() as Form;
+      }
+      return null;
+    } catch (e) {
+      console.error(`Erro ao buscar formulário ${formSlug}:`, e);
+      return null;
     }
-    return null;
   }
 
   async getLeads() {
@@ -79,13 +85,19 @@ class FirebaseStorageService {
   }
 
   async getLeadsByForm(formId: string) {
-    const q = query(
-      collection(firestore, this.LEADS),
-      where("formId", "==", formId),
-      orderBy("createdAt", "desc")
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as Lead);
+    console.log(`Buscando leads do formulário: ${formId}`);
+    try {
+      const q = query(
+        collection(firestore, this.LEADS),
+        where("formId", "==", formId),
+        orderBy("createdAt", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => doc.data() as Lead);
+    } catch (e) {
+      console.error(`Erro ao buscar leads do form ${formId}:`, e);
+      return [];
+    }
   }
 
   async getIntegrations() {
