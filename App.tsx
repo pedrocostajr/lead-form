@@ -201,7 +201,7 @@ const DashboardView = () => {
       }
     };
     fetchData();
-  }, [user]);
+  }, [user, isGlobalView]);
 
   if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Dashboard...</div>;
 
@@ -289,7 +289,7 @@ const LeadListView = () => {
       }
     };
     fetchData();
-  }, [user]);
+  }, [user, isGlobalView]);
 
   const exportToCSV = () => {
     if (leads.length === 0) return;
@@ -1412,7 +1412,7 @@ const FormListView = () => {
       }
     };
     fetchForms();
-  }, [user]);
+  }, [user, isGlobalView]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();

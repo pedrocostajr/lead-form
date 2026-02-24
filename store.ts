@@ -134,13 +134,16 @@ class FirebaseStorageService {
 
       // Fetch leads by orgId
       if (isGlobal) {
-        const querySnapshot = await getDocs(query(leadsRef, orderBy("createdAt", "desc")));
+        const querySnapshot = await getDocs(collection(firestore, this.LEADS));
         leads = querySnapshot.docs.map(doc => doc.data() as Lead);
       } else if (orgId) {
-        const qOrg = query(leadsRef, where("orgId", "==", orgId), orderBy("createdAt", "desc"));
+        const qOrg = query(leadsRef, where("orgId", "==", orgId));
         const orgSnapshot = await getDocs(qOrg);
         leads = orgSnapshot.docs.map(doc => doc.data() as Lead);
       }
+
+      // Sort in memory to avoid Firestore index requirements
+      leads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       // If userEmail is provided, also fetch leads for shared forms
       if (userEmail) {
@@ -174,11 +177,11 @@ class FirebaseStorageService {
     try {
       const q = query(
         collection(firestore, this.LEADS),
-        where("formId", "==", formId),
-        orderBy("createdAt", "desc")
+        where("formId", "==", formId)
       );
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => doc.data() as Lead);
+      const leads = querySnapshot.docs.map(doc => doc.data() as Lead);
+      return leads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (e) {
       console.error(`Erro ao buscar leads do form ${formId}:`, e);
       return [];
