@@ -597,16 +597,16 @@ const PublicFormView = () => {
     const currentIntegrations = await db.getIntegrations(form.orgId);
     if (form.settings.webhookIds && form.settings.webhookIds.length > 0) {
       const integrations = currentIntegrations.filter(i => form.settings.webhookIds.includes(i.id));
-      integrations.forEach(integration => {
-        if (integration.url) {
-          console.log(`Disparando webhook: ${integration.name} -> ${integration.url}`);
-          fetch(integration.url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(lead)
-          }).catch(err => console.error('Erro no webhook:', err));
-        }
+      const promises = integrations.map(integration => {
+        if (!integration.url) return Promise.resolve();
+        console.log(`Disparando webhook: ${integration.name} -> ${integration.url}`);
+        return fetch(integration.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(lead)
+        }).catch(err => console.error('Erro no webhook:', err));
       });
+      await Promise.allSettled(promises);
     }
 
     setIsLoading(false);
