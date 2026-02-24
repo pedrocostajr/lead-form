@@ -120,15 +120,20 @@ const DashboardView = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [l, f, i] = await Promise.all([
-        db.getLeads(),
-        db.getForms(),
-        db.getIntegrations()
-      ]);
-      setLeads(l);
-      setForms(f);
-      setIntegrationsCount(i.length);
-      setLoading(false);
+      try {
+        const [l, f, i] = await Promise.all([
+          db.getLeads(),
+          db.getForms(),
+          db.getIntegrations()
+        ]);
+        setLeads(l);
+        setForms(f);
+        setIntegrationsCount(i.length);
+      } catch (error) {
+        console.error('Erro ao buscar dados do Dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchData();
   }, []);
@@ -204,13 +209,18 @@ const LeadListView = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [l, f] = await Promise.all([
-        db.getLeads(),
-        db.getForms()
-      ]);
-      setLeads(l);
-      setForms(f);
-      setLoading(false);
+      try {
+        const [l, f] = await Promise.all([
+          db.getLeads(),
+          db.getForms()
+        ]);
+        setLeads(l);
+        setForms(f);
+      } catch (error) {
+        console.error('Erro ao buscar leads:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchData();
   }, []);
@@ -280,8 +290,12 @@ const IntegrationListView = () => {
 
   useEffect(() => {
     const fetchIntegrations = async () => {
-      const ints = await db.getIntegrations();
-      setIntegrations(ints);
+      try {
+        const ints = await db.getIntegrations();
+        setIntegrations(ints);
+      } catch (error) {
+        console.error('Erro ao buscar integrações:', error);
+      }
     };
     fetchIntegrations();
   }, []);
@@ -377,8 +391,12 @@ const PublicFormView = () => {
 
   useEffect(() => {
     const fetchForm = async () => {
-      const found = await db.getFormBySlug(orgSlug || '', formSlug || '');
-      if (found) setForm(found);
+      try {
+        const found = await db.getFormBySlug(orgSlug || '', formSlug || '');
+        if (found) setForm(found);
+      } catch (error) {
+        console.error('Erro ao buscar formulário público:', error);
+      }
     };
     fetchForm();
   }, [orgSlug, formSlug]);
@@ -737,34 +755,38 @@ const FormDetailView = () => {
 
   useEffect(() => {
     const fetchForm = async () => {
-      if (formId === 'new') {
-        const newForm: Form = {
-          id: `form-${Date.now()}`,
-          orgId: 'org-1', // Mock org
-          name: 'Novo Formulário',
-          slug: `novo-fluxo-${Date.now()}`,
-          status: FormStatus.DRAFT,
-          theme: { primaryColor: '#2563eb' },
-          steps: [
-            {
-              id: `step-${Date.now()}`,
-              title: 'Início',
-              layout: '1-column',
-              columns: [{ id: `col-${Date.now()}`, blocks: [] }]
-            }
-          ],
-          settings: { webhookIds: [] },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        await db.saveForm(newForm);
-        navigate(`/dashboard/forms/${newForm.id}`, { replace: true });
-        return;
-      }
+      try {
+        if (formId === 'new') {
+          const newForm: Form = {
+            id: `form-${Date.now()}`,
+            orgId: 'org-1', // Mock org
+            name: 'Novo Formulário',
+            slug: `novo-fluxo-${Date.now()}`,
+            status: FormStatus.DRAFT,
+            theme: { primaryColor: '#2563eb' },
+            steps: [
+              {
+                id: `step-${Date.now()}`,
+                title: 'Início',
+                layout: '1-column',
+                columns: [{ id: `col-${Date.now()}`, blocks: [] }]
+              }
+            ],
+            settings: { webhookIds: [] },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await db.saveForm(newForm);
+          navigate(`/dashboard/forms/${newForm.id}`, { replace: true });
+          return;
+        }
 
-      const forms = await db.getForms();
-      const found = forms.find(f => f.id === formId);
-      if (found) setForm(found);
+        const forms = await db.getForms();
+        const found = forms.find(f => f.id === formId);
+        if (found) setForm(found);
+      } catch (error) {
+        console.error('Erro ao buscar detalhe do formulário:', error);
+      }
     };
     fetchForm();
   }, [formId, navigate]);
@@ -854,9 +876,14 @@ const FormListView = () => {
 
   useEffect(() => {
     const fetchForms = async () => {
-      const f = await db.getForms();
-      setForms(f);
-      setLoading(false);
+      try {
+        const f = await db.getForms();
+        setForms(f);
+      } catch (error) {
+        console.error('Erro ao buscar lista de formulários:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchForms();
   }, []);
@@ -889,9 +916,14 @@ const LeadsByFormView = ({ formId }: { formId: string }) => {
 
   useEffect(() => {
     const fetchLeads = async () => {
-      const l = await db.getLeadsByForm(formId);
-      setLeads(l);
-      setLoading(false);
+      try {
+        const l = await db.getLeadsByForm(formId);
+        setLeads(l);
+      } catch (error) {
+        console.error('Erro ao buscar leads por formulário:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchLeads();
   }, [formId]);

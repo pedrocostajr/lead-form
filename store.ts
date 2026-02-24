@@ -23,18 +23,33 @@ class FirebaseStorageService {
   private readonly INTEGRATIONS = 'integrations';
 
   async getOrgs() {
-    const querySnapshot = await getDocs(collection(firestore, this.ORGS));
-    return querySnapshot.docs.map(doc => doc.data() as Organization);
+    try {
+      const querySnapshot = await getDocs(collection(firestore, this.ORGS));
+      return querySnapshot.docs.map(doc => doc.data() as Organization);
+    } catch (e) {
+      console.error("Error fetching orgs:", e);
+      return [];
+    }
   }
 
   async getUsers() {
-    const querySnapshot = await getDocs(collection(firestore, this.USERS));
-    return querySnapshot.docs.map(doc => doc.data() as User);
+    try {
+      const querySnapshot = await getDocs(collection(firestore, this.USERS));
+      return querySnapshot.docs.map(doc => doc.data() as User);
+    } catch (e) {
+      console.error("Error fetching users:", e);
+      return [];
+    }
   }
 
   async getForms() {
-    const querySnapshot = await getDocs(collection(firestore, this.FORMS));
-    return querySnapshot.docs.map(doc => doc.data() as Form);
+    try {
+      const querySnapshot = await getDocs(collection(firestore, this.FORMS));
+      return querySnapshot.docs.map(doc => doc.data() as Form);
+    } catch (e) {
+      console.error("Error fetching forms:", e);
+      return [];
+    }
   }
 
   async getFormBySlug(orgSlug: string, formSlug: string) {
@@ -50,12 +65,17 @@ class FirebaseStorageService {
   }
 
   async getLeads() {
-    const q = query(
-      collection(firestore, this.LEADS),
-      orderBy("createdAt", "desc")
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as Lead);
+    try {
+      const q = query(
+        collection(firestore, this.LEADS),
+        orderBy("createdAt", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => doc.data() as Lead);
+    } catch (e) {
+      console.error("Error fetching leads:", e);
+      return [];
+    }
   }
 
   async getLeadsByForm(formId: string) {
@@ -69,8 +89,13 @@ class FirebaseStorageService {
   }
 
   async getIntegrations() {
-    const querySnapshot = await getDocs(collection(firestore, this.INTEGRATIONS));
-    return querySnapshot.docs.map(doc => doc.data() as Integration);
+    try {
+      const querySnapshot = await getDocs(collection(firestore, this.INTEGRATIONS));
+      return querySnapshot.docs.map(doc => doc.data() as Integration);
+    } catch (e) {
+      console.error("Error fetching integrations:", e);
+      return [];
+    }
   }
 
   async saveLead(lead: Lead) {
