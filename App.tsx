@@ -595,11 +595,19 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
   };
 
   const updateBlockSettings = (blockId: string, settings: any) => {
+    let finalSettings = { ...settings };
+
+    // Se for alteração de 'src' em bloco de imagem, limpa o código do Canva
+    if (finalSettings.src && finalSettings.src.startsWith('<div')) {
+      const match = finalSettings.src.match(/<div[\s\S]*?<\/div>/);
+      if (match) finalSettings.src = match[0];
+    }
+
     const newSteps = form.steps.map(step => ({
       ...step,
       columns: step.columns.map(col => ({
         ...col,
-        blocks: col.blocks.map(b => b.id === blockId ? { ...b, settings: { ...b.settings, ...settings } } : b)
+        blocks: col.blocks.map(b => b.id === blockId ? { ...b, settings: { ...b.settings, ...finalSettings } } : b)
       }))
     }));
     setForm({ ...form, steps: newSteps });
@@ -711,7 +719,9 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
         <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">Propriedades</h3>
         {selectedBlock ? (
           <div className="space-y-6">
-            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Título / Pergunta</label><input value={selectedBlock.settings.label} onChange={e => updateBlockSettings(selectedBlock.id, { label: e.target.value })} className="w-full px-4 py-2 border rounded-xl outline-none" /></div>
+            {selectedBlock.type !== 'image' && (
+              <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Título / Pergunta</label><input value={selectedBlock.settings.label} onChange={e => updateBlockSettings(selectedBlock.id, { label: e.target.value })} className="w-full px-4 py-2 border rounded-xl outline-none" /></div>
+            )}
 
             {selectedBlock.type === 'image' && (
               <div className="space-y-4">
