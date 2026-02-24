@@ -1208,6 +1208,36 @@ const FormListView = () => {
     fetchForms();
   }, [user]);
 
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm('Deseja excluir este formulário? Seus leads continuarão salvos.')) return;
+    try {
+      await db.deleteForm(id);
+      setForms(forms.filter(f => f.id !== id));
+    } catch (e) {
+      alert('Erro ao excluir formulário.');
+    }
+  };
+
+  const handleDuplicate = async (e: React.MouseEvent, form: Form) => {
+    e.stopPropagation();
+    try {
+      const newForm: Form = {
+        ...form,
+        id: `form-${Date.now()}`,
+        name: `${form.name} (Cópia)`,
+        slug: `${form.slug}-copia-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      await db.saveForm(newForm);
+      setForms([newForm, ...forms]);
+      alert('Formulário duplicado com sucesso!');
+    } catch (e) {
+      alert('Erro ao duplicar formulário.');
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Formulários...</div>;
 
   return (
@@ -1218,10 +1248,16 @@ const FormListView = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {forms.map(form => (
-          <div key={form.id} onClick={() => navigate(`/dashboard/forms/${form.id}`)} className="bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm cursor-pointer hover:shadow-2xl hover:-translate-y-1.5 transition-all group">
+          <div key={form.id} onClick={() => navigate(`/dashboard/forms/${form.id}`)} className="bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm cursor-pointer hover:shadow-2xl hover:-translate-y-1.5 transition-all group relative">
             <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[20px] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500"><FileText size={32} /></div>
             <h3 className="text-2xl font-bold text-gray-900 truncate">{form.name}</h3>
-            <div className="flex items-center justify-between border-t border-gray-50 pt-8 mt-8"><span className="text-[10px] font-bold text-green-600 uppercase bg-green-50 px-4 py-1.5 rounded-full tracking-widest">{form.status}</span></div>
+            <div className="flex items-center justify-between border-t border-gray-50 pt-8 mt-8">
+              <span className="text-[10px] font-bold text-green-600 uppercase bg-green-50 px-4 py-1.5 rounded-full tracking-widest">{form.status}</span>
+              <div className="flex items-center gap-2">
+                <button onClick={(e) => handleDuplicate(e, form)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Duplicar"><Copy size={18} /></button>
+                <button onClick={(e) => handleDelete(e, form.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Excluir"><Trash2 size={18} /></button>
+              </div>
+            </div>
           </div>
         ))}
       </div>

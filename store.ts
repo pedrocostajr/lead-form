@@ -203,6 +203,15 @@ class FirebaseStorageService {
       throw e;
     }
   }
+
+  async deleteForm(id: string) {
+    try {
+      await deleteDoc(doc(firestore, this.FORMS, id));
+    } catch (e) {
+      console.error("Error deleting form:", e);
+      throw e;
+    }
+  }
 }
 
 export const db = new FirebaseStorageService();
