@@ -603,26 +603,14 @@ const PublicFormView = () => {
         if (!integration.url) return Promise.resolve();
         console.log(`[Webhook] Enviando para: ${integration.name}`);
 
-        // Estratégia 1: Fetch com keepalive e sem preflight (text/plain)
-        // Usar text/plain evita o OPTIONS request, fazendo o envio ser instantâneo
-        const fetchPromise = fetch(integration.url, {
+        // Estratégia: Fetch com keepalive e sem preflight (text/plain)
+        return fetch(integration.url, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
           body: payload,
           keepalive: true,
           mode: 'no-cors' // Garante que o navegador não trave por causa de CORS
         }).catch(err => console.error('[Webhook] Falha no Fetch:', err));
-
-        // Estratégia 2: sendBeacon (O padrão ouro para envios durante redirecionamento)
-        try {
-          if (navigator.sendBeacon) {
-            navigator.sendBeacon(integration.url, new Blob([payload], { type: 'text/plain' }));
-          }
-        } catch (e) {
-          console.error('[Webhook] Falha no Beacon:', e);
-        }
-
-        return fetchPromise;
       });
 
       await Promise.allSettled(promises);
