@@ -638,9 +638,33 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
             {activeStep.columns.map(col => (
               <div key={col.id} className="space-y-3">
                 {col.blocks.map(b => (
-                  <div key={b.id} onClick={() => setSelectedBlockId(b.id)} className={`p-3 rounded-xl border-2 cursor-pointer ${selectedBlockId === b.id ? 'border-blue-500 bg-blue-50/50' : 'bg-white border-white shadow-sm'}`}>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{b.type}</p>
-                    <p className="text-xs font-bold text-gray-800">{b.settings.label}</p>
+                  <div key={b.id} onClick={() => setSelectedBlockId(b.id)} className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedBlockId === b.id ? 'border-blue-500 bg-blue-50/50' : 'bg-white border-white shadow-sm hover:border-gray-200'}`}>
+                    {b.type === 'heading' && <h3 className="font-bold text-gray-800 pointer-events-none">{b.settings.label}</h3>}
+                    {b.type === 'text' && <p className="text-[10px] text-gray-500 leading-tight pointer-events-none">{b.settings.label}</p>}
+                    {b.type === 'image' && (
+                      <div className="space-y-1">
+                        {b.settings.src ? (
+                          <img src={b.settings.src} alt="" className="w-full rounded-lg pointer-events-none" />
+                        ) : (
+                          <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase tracking-wider">Sem Imagem</div>
+                        )}
+                      </div>
+                    )}
+                    {['short_text', 'email', 'standard_contact'].includes(b.type) && (
+                      <div className="space-y-1 pointer-events-none">
+                        <label className="text-[8px] font-bold text-gray-400 uppercase">{b.settings.label}</label>
+                        <div className="w-full h-8 bg-gray-50 border border-gray-100 rounded-lg" />
+                      </div>
+                    )}
+                    {b.type === 'single_choice' && (
+                      <div className="space-y-2 pointer-events-none">
+                        <label className="text-[8px] font-bold text-gray-400 uppercase">{b.settings.label}</label>
+                        <div className="w-full h-8 border border-gray-100 rounded-lg flex items-center px-3 text-[10px] text-gray-400">Selecionar...</div>
+                      </div>
+                    )}
+                    {b.type === 'button' && (
+                      <div className="w-full py-2 bg-blue-600 text-white rounded-xl text-[10px] font-bold text-center pointer-events-none">{b.settings.label}</div>
+                    )}
                   </div>
                 ))}
                 <button onClick={() => setIsAddingBlock({ stepId: activeStepId, colId: col.id })} className="w-full py-2 border-2 border-dashed border-gray-200 rounded-xl text-[10px] font-bold text-gray-400 hover:border-blue-200 hover:text-blue-500 transition-all">+ Adicionar Bloco</button>
@@ -760,6 +784,7 @@ const FormDetailView = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState<Form | null>(null);
   const [activeTab, setActiveTab] = useState('builder');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchForm = async () => {
@@ -816,7 +841,24 @@ const FormDetailView = () => {
         </div>
         <div className="flex gap-3">
           <Link to={`/f/leadsign/${form.slug}`} target="_blank" className="flex items-center gap-2 px-6 py-3 bg-white border rounded-2xl font-bold hover:shadow-md transition-all"><ExternalLink size={18} /> Ver Página</Link>
-          <button onClick={async () => { await db.saveForm(form); alert('Salvo!'); }} className="flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-100"><Save size={18} /> Salvar</button>
+          <button
+            disabled={isSaving}
+            onClick={async () => {
+              setIsSaving(true);
+              try {
+                await db.saveForm(form);
+                alert('✅ Alterações salvas com sucesso!');
+              } catch (e) {
+                alert('❌ Erro ao salvar: ' + (e as Error).message);
+              } finally {
+                setIsSaving(false);
+              }
+            }}
+            className="flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-100 disabled:opacity-50"
+          >
+            {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={18} />}
+            {isSaving ? 'Salvando...' : 'Salvar'}
+          </button>
         </div>
       </header>
       <div className="flex gap-2 bg-gray-100 p-1 rounded-2xl w-fit">
