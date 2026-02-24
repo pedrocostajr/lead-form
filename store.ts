@@ -127,14 +127,42 @@ class FirebaseStorageService {
     }
   }
 
-  async getLeads(orgId?: string) {
+  async getLeads(orgId?: string, userEmail?: string) {
     try {
-      let q = query(collection(firestore, this.LEADS), orderBy("createdAt", "desc"));
+      let leads: Lead[] = [];
+      const leadsRef = collection(firestore, this.LEADS);
+
+      // Fetch leads by orgId
       if (orgId && orgId !== 'org-admin') {
-        q = query(collection(firestore, this.LEADS), where("orgId", "==", orgId), orderBy("createdAt", "desc"));
+        const qOrg = query(leadsRef, where("orgId", "==", orgId), orderBy("createdAt", "desc"));
+        const orgSnapshot = await getDocs(qOrg);
+        leads = orgSnapshot.docs.map(doc => doc.data() as Lead);
+      } else {
+        const querySnapshot = await getDocs(query(leadsRef, orderBy("createdAt", "desc")));
+        leads = querySnapshot.docs.map(doc => doc.data() as Lead);
       }
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => doc.data() as Lead);
+
+      // If userEmail is provided, also fetch leads for shared forms
+      if (userEmail) {
+        // First get shared forms
+        const sharedForms = await this.getForms(undefined, userEmail);
+        const sharedOnly = sharedForms.filter(f => f.orgId !== orgId);
+
+        if (sharedOnly.length > 0) {
+          // Fetch leads for each shared form (handling Firestore's limitations)
+          for (const form of sharedOnly) {
+            const formLeads = await this.getLeadsByForm(form.id);
+            leads = [...leads, ...formLeads];
+          }
+
+          // Re-sort and remove potential duplicates
+          leads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          const unique = Array.from(new Map(leads.map(l => [l.id, l])).values());
+          return unique;
+        }
+      }
+
+      return leads;
     } catch (e) {
       console.error("Error fetching leads:", e);
       return [];

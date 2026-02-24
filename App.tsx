@@ -162,7 +162,7 @@ const DashboardView = () => {
     const fetchData = async () => {
       try {
         const [l, f, i] = await Promise.all([
-          db.getLeads(user?.orgId),
+          db.getLeads(user?.orgId, user?.email),
           db.getForms(user?.orgId, user?.email),
           db.getIntegrations(user?.orgId)
         ]);
@@ -252,8 +252,8 @@ const LeadListView = () => {
     const fetchData = async () => {
       try {
         const [l, f] = await Promise.all([
-          db.getLeads(user?.orgId),
-          db.getForms(user?.orgId)
+          db.getLeads(user?.orgId, user?.email),
+          db.getForms(user?.orgId, user?.email)
         ]);
         setLeads(l || []);
         setForms(f || []);
@@ -1273,7 +1273,7 @@ const FormDetailView = () => {
           return;
         }
 
-        const forms = await db.getForms(user?.orgId);
+        const forms = await db.getForms(user?.orgId, user?.email);
         const found = (forms || []).find(f => f.id === formId);
         if (found) setForm(found);
       } catch (error) {
