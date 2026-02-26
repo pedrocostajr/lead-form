@@ -1770,7 +1770,7 @@ const InstructionsView = () => {
           <h3 className="text-2xl font-bold">Dúvidas ou suporte técnico?</h3>
           <p className="text-blue-100 font-medium">Estamos aqui para ajudar você a vender mais imóveis.</p>
         </div>
-        <a href="https://wa.me/5511999999999" target="_blank" className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-bold hover:shadow-lg transition-all flex items-center gap-2">
+        <a href="https://wa.me/5554996895454" target="_blank" className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-bold hover:shadow-lg transition-all flex items-center gap-2">
           <Smartphone size={20} /> Falar com Suporte
         </a>
       </div>
