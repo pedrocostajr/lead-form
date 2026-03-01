@@ -583,8 +583,9 @@ const PublicFormView = () => {
 
   const handleNext = () => {
     // Validation: Check if all required blocks in the current step have values
+    const inputTypes = ['short_text', 'long_text', 'email', 'standard_contact', 'single_choice', 'number', 'date', 'file'];
     const requiredBlocks = currentStep.columns.flatMap(col =>
-      col.blocks.filter(block => block.settings.required)
+      col.blocks.filter(block => block.settings.required && inputTypes.includes(block.type))
     );
 
     const missingFields = requiredBlocks.filter(block => {
@@ -838,7 +839,7 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
         label,
         placeholder,
         mappingKey,
-        required: true,
+        required: ['short_text', 'long_text', 'email', 'standard_contact', 'single_choice'].includes(type),
         src: type === 'image' ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop' : undefined,
         options: type.includes('choice') ? ['Opção 1', 'Opção 2'] : undefined,
       }
@@ -1172,6 +1173,21 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                   </p>
                   <a href="https://www.canva.com" target="_blank" className="block text-center py-2 bg-blue-600 text-white rounded-xl text-[10px] font-bold hover:bg-blue-700 transition-all">Abrir Canva</a>
                 </div>
+              </div>
+            )}
+
+            {['short_text', 'long_text', 'email', 'standard_contact', 'single_choice'].includes(selectedBlock.type) && (
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Obrigatório</span>
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                </div>
+                <button
+                  onClick={() => updateBlockSettings(selectedBlock.id, { required: !selectedBlock.settings.required })}
+                  className={`w-10 h-5 rounded-full p-1 transition-colors ${selectedBlock.settings.required ? 'bg-blue-600' : 'bg-gray-200'}`}
+                >
+                  <div className={`w-3 h-3 bg-white rounded-full transition-transform ${selectedBlock.settings.required ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
               </div>
             )}
 
