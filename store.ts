@@ -284,6 +284,15 @@ class FirebaseStorageService {
       throw e;
     }
   }
+
+  async deleteLead(id: string) {
+    try {
+      await deleteDoc(doc(firestore, this.LEADS, id));
+    } catch (e) {
+      console.error("Error deleting lead:", e);
+      throw e;
+    }
+  }
 }
 
 export const db = new FirebaseStorageService();

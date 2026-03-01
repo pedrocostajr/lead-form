@@ -321,6 +321,16 @@ const LeadListView = () => {
     document.body.removeChild(link);
   };
 
+  const handleDeleteLead = async (id: string) => {
+    if (!confirm('Deseja excluir este lead permanentemente?')) return;
+    try {
+      await db.deleteLead(id);
+      setLeads(leads.filter(l => l.id !== id));
+    } catch (e) {
+      alert('Erro ao excluir lead.');
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Leads...</div>;
 
   return (
@@ -347,11 +357,12 @@ const LeadListView = () => {
               <th className="px-8 py-4">Formulário</th>
               <th className="px-8 py-4">Status</th>
               <th className="px-8 py-4">Data</th>
+              <th className="px-8 py-4 w-10"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {leads.map(lead => (
-              <tr key={lead.id} className="hover:bg-gray-50/50">
+              <tr key={lead.id} className="hover:bg-gray-50/50 group">
                 <td className="px-8 py-6">
                   <div className="flex flex-col">
                     <span className="font-bold text-gray-900">{lead.data.name || lead.data.full_name || 'Desconhecido'}</span>
@@ -376,6 +387,11 @@ const LeadListView = () => {
                   <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-bold uppercase tracking-widest">Novo</span>
                 </td>
                 <td className="px-8 py-6 text-sm text-gray-400">{new Date(lead.createdAt).toLocaleString()}</td>
+                <td className="px-8 py-6 text-right">
+                  <button onClick={() => handleDeleteLead(lead.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                    <Trash2 size={16} />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -566,6 +582,22 @@ const PublicFormView = () => {
   const currentStep = steps[currentStepIndex];
 
   const handleNext = () => {
+    // Validation: Check if all required blocks in the current step have values
+    const requiredBlocks = currentStep.columns.flatMap(col =>
+      col.blocks.filter(block => block.settings.required)
+    );
+
+    const missingFields = requiredBlocks.filter(block => {
+      const key = block.settings.mappingKey || block.id;
+      const value = formData[key];
+      return !value || (typeof value === 'string' && value.trim() === '');
+    });
+
+    if (missingFields.length > 0) {
+      alert(`Por favor, preencha todos os campos obrigatórios: ${missingFields.map(b => b.settings.label).join(', ')}`);
+      return;
+    }
+
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
@@ -676,7 +708,7 @@ const PublicFormView = () => {
                       </div>
                     )}
 
-                    {block.type === 'short_text' || block.type === 'email' || block.type === 'standard_contact' ? (
+                    {(block.type === 'short_text' || block.type === 'email' || block.type === 'standard_contact') ? (
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{block.settings.label}</label>
                         <input
@@ -688,6 +720,19 @@ const PublicFormView = () => {
                         />
                       </div>
                     ) : null}
+
+                    {block.type === 'long_text' && (
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{block.settings.label}</label>
+                        <textarea
+                          placeholder={block.settings.placeholder}
+                          value={formData[block.settings.mappingKey || block.id] || ''}
+                          onChange={(e) => setFormData({ ...formData, [block.settings.mappingKey || block.id]: e.target.value })}
+                          rows={4}
+                          className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium resize-none"
+                        />
+                      </div>
+                    )}
 
                     {block.type === 'single_choice' && (
                       <div className="space-y-3">
@@ -779,7 +824,8 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
 
     if (type === 'heading') label = 'Título';
     else if (type === 'text') label = 'Descrição ou texto explicativo';
-    else if (type === 'short_text') { label = 'Nome'; placeholder = 'Digite seu nome'; mappingKey = 'name'; }
+    else if (type === 'short_text') { label = 'Campo de Texto'; placeholder = 'Sua resposta'; mappingKey = `campo_${Date.now().toString(36)}`; }
+    else if (type === 'long_text') { label = 'Texto Longo'; placeholder = 'Sua mensagem ou descrição'; mappingKey = `mensagem_${Date.now().toString(36)}`; }
     else if (type === 'email') { label = 'E-mail'; placeholder = 'seu@email.com'; mappingKey = 'email'; }
     else if (type === 'standard_contact') { label = 'WhatsApp'; placeholder = '(11) 99999-9999'; mappingKey = 'phone'; }
     else if (type === 'single_choice') label = 'Pergunta de múltipla escolha';
@@ -861,6 +907,21 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
     newSteps.splice(index + 1, 0, newStep);
     setForm({ ...form, steps: newSteps });
     setActiveStepId(newStepId);
+  };
+
+  const deleteStep = (e: React.MouseEvent, stepId: string) => {
+    e.stopPropagation();
+    if (form.steps.length <= 1) {
+      alert('O formulário deve ter pelo menos uma etapa.');
+      return;
+    }
+    if (!confirm('Deseja excluir esta etapa e todos os seus blocos?')) return;
+
+    const newSteps = form.steps.filter(s => s.id !== stepId);
+    setForm({ ...form, steps: newSteps });
+    if (activeStepId === stepId) {
+      setActiveStepId(newSteps[0].id);
+    }
   };
 
   const [draggedBlock, setDraggedBlock] = useState<{ blockId: string, stepId: string, colId: string } | null>(null);
@@ -949,9 +1010,9 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                 <button onClick={(e) => { e.stopPropagation(); setEditingStepId(s.id); }} className="p-1 hover:bg-black/10 rounded" title="Renomear Etapa"><Edit size={12} /></button>
                 <button onClick={(e) => duplicateStep(e, s, i)} className="p-1 hover:bg-black/10 rounded" title="Duplicar Etapa"><Copy size={12} /></button>
                 <div className="flex flex-col gap-0.5">
-                  {i > 0 && <button onClick={(e) => moveStep(e, i, 'up')} className="p-0.5 hover:bg-black/10 rounded"><ArrowUp size={10} /></button>}
                   {i < form.steps.length - 1 && <button onClick={(e) => moveStep(e, i, 'down')} className="p-0.5 hover:bg-black/10 rounded"><ArrowDown size={10} /></button>}
                 </div>
+                <button onClick={(e) => deleteStep(e, s.id)} className="p-1 hover:bg-red-500/20 text-red-400 rounded" title="Excluir Etapa"><Trash2 size={12} /></button>
               </div>
             </div>
           ))}
@@ -1007,6 +1068,12 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                         <div className="w-full h-8 bg-gray-50 border border-gray-100 rounded-lg" />
                       </div>
                     )}
+                    {b.type === 'long_text' && (
+                      <div className="space-y-1 pointer-events-none">
+                        <label className="text-[8px] font-bold text-gray-400 uppercase">{b.settings.label}</label>
+                        <div className="w-full h-16 bg-gray-50 border border-gray-100 rounded-lg" />
+                      </div>
+                    )}
                     {b.type === 'single_choice' && (
                       <div className="space-y-2 pointer-events-none">
                         <label className="text-[8px] font-bold text-gray-400 uppercase">{b.settings.label}</label>
@@ -1040,7 +1107,8 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                   { type: 'heading', label: 'Título' },
                   { type: 'text', label: 'Texto' },
                   { type: 'image', label: 'Imagem/Canva' },
-                  { type: 'short_text', label: 'Nome' },
+                  { type: 'short_text', label: 'Campo Texto' },
+                  { type: 'long_text', label: 'Texto Longo' },
                   { type: 'email', label: 'E-mail' },
                   { type: 'standard_contact', label: 'WhatsApp' },
                   { type: 'single_choice', label: 'Opções' },
@@ -1056,6 +1124,7 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                       {item.type === 'text' && <FileText size={16} />}
                       {item.type === 'image' && <ImageIcon size={16} />}
                       {item.type === 'short_text' && <UserPlus size={16} />}
+                      {item.type === 'long_text' && <FileText size={16} />}
                       {item.type === 'email' && <Send size={16} />}
                       {item.type === 'standard_contact' && <Smartphone size={16} />}
                       {item.type === 'single_choice' && <Layers size={16} />}
@@ -1106,13 +1175,13 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
               </div>
             )}
 
-            {['short_text', 'email', 'standard_contact'].includes(selectedBlock.type) && (
+            {['short_text', 'long_text', 'email', 'standard_contact'].includes(selectedBlock.type) && (
               <div>
                 <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Chave de Mapeamento (JSON Key)</label>
                 <input
                   value={selectedBlock.settings.mappingKey || ''}
                   onChange={e => updateBlockSettings(selectedBlock.id, { mappingKey: e.target.value })}
-                  placeholder="Ex: nome, email, telefone"
+                  placeholder="Ex: profissao, observacoes, email"
                   className="w-full px-4 py-2 border rounded-xl outline-none font-mono text-xs"
                 />
                 <p className="text-[9px] text-gray-400 mt-1">Use "name", "email" ou "phone" para identificação automática.</p>
@@ -1580,15 +1649,25 @@ const LeadsByFormView = ({ formId }: { formId: string }) => {
     fetchLeads();
   }, [formId]);
 
+  const handleDeleteLead = async (id: string) => {
+    if (!confirm('Deseja excluir este lead permanentemente?')) return;
+    try {
+      await db.deleteLead(id);
+      setLeads(leads.filter(l => l.id !== id));
+    } catch (e) {
+      alert('Erro ao excluir lead.');
+    }
+  };
+
   if (loading) return <div className="p-10 text-center font-bold">Carregando leads...</div>;
 
   return (
     <div className="bg-white rounded-[32px] border shadow-sm overflow-hidden">
       <table className="w-full text-left">
-        <thead className="bg-gray-50"><tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><th className="px-8 py-4">Lead</th><th className="px-8 py-4">Data</th></tr></thead>
+        <thead className="bg-gray-50"><tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><th className="px-8 py-4">Lead</th><th className="px-8 py-4">Data</th><th className="px-8 py-4 w-10"></th></tr></thead>
         <tbody className="divide-y divide-gray-100">
           {leads.map(l => (
-            <tr key={l.id} className="hover:bg-gray-50/50">
+            <tr key={l.id} className="hover:bg-gray-50/50 group">
               <td className="px-8 py-4">
                 <div className="flex flex-col">
                   <span className="font-bold text-gray-900">{l.data.name || l.data.full_name || l.data.email || 'Lead sem nome'}</span>
@@ -1600,6 +1679,11 @@ const LeadsByFormView = ({ formId }: { formId: string }) => {
                 </div>
               </td>
               <td className="px-8 py-4 text-xs text-gray-400 font-medium">{new Date(l.createdAt).toLocaleDateString()}</td>
+              <td className="px-8 py-4 text-right">
+                <button onClick={() => handleDeleteLead(l.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                  <Trash2 size={16} />
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
