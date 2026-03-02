@@ -190,21 +190,26 @@ class FirebaseStorageService {
 
   async getIntegrations(orgId?: string, isGlobal: boolean = false) {
     try {
+      console.log(`[Store] Buscando integrações para orgId: ${orgId}${isGlobal ? ' (Global)' : ''}`);
       let q = query(collection(firestore, this.INTEGRATIONS));
       if (isGlobal) {
         // Fetch all
       } else if (orgId) {
         q = query(q, where("orgId", "==", orgId));
       } else {
+        console.warn('[Store] getIntegrations chamado sem orgId e sem flag isGlobal');
         return []; // Security return
       }
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => doc.data() as Integration);
+      const results = querySnapshot.docs.map(doc => doc.data() as Integration);
+      console.log(`[Store] Encontradas ${results.length} integrações`);
+      return results;
     } catch (e) {
       console.error("Error fetching integrations:", e);
       return [];
     }
   }
+
 
   private sanitize(data: any): any {
     const clean: any = {};

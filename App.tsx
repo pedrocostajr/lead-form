@@ -609,60 +609,80 @@ const PublicFormView = () => {
   const submitForm = async () => {
     setIsLoading(true);
 
-    const lead: Lead = {
-      id: `lead-${Date.now()}`,
-      orgId: form.orgId,
-      formId: form.id,
-      data: formData,
-      utm: {}, // Aqui capturaríamos via search params
-      status: 'NEW',
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const lead: Lead = {
+        id: `lead-${Date.now()}`,
+        orgId: form.orgId,
+        formId: form.id,
+        data: formData,
+        utm: {}, // Aqui capturaríamos via search params
+        status: 'NEW',
+        createdAt: new Date().toISOString()
+      };
 
-    await db.saveLead(lead);
+      await db.saveLead(lead);
 
-    // Meta Pixel Lead Event
-    if (form.settings.pixelId && (window as any).fbq) {
-      (window as any).fbq('track', 'Lead');
-    }
+      // Meta Pixel Lead Event
+      if (form.settings.pixelId && (window as any).fbq) {
+        (window as any).fbq('track', 'Lead');
+      }
 
-    // Real Webhook Dispatch (Isolated by orgId)
-    const currentIntegrations = await db.getIntegrations(form.orgId);
-    if (form.settings.webhookIds && form.settings.webhookIds.length > 0) {
-      const integrations = currentIntegrations.filter(i => form.settings.webhookIds.includes(i.id));
-      const payload = JSON.stringify(lead);
+      // Real Webhook Dispatch (Isolated by orgId)
+      const currentIntegrations = await db.getIntegrations(form.orgId);
+      if (form.settings.webhookIds && form.settings.webhookIds.length > 0) {
+        const integrations = currentIntegrations.filter(i => form.settings.webhookIds.includes(i.id));
 
-      const promises = integrations.map(integration => {
-        if (!integration.url) return Promise.resolve();
-        console.log(`[Webhook] Enviando para: ${integration.name}`);
+        // Payload amigável para CRM: Metadados do Lead + Dados do Formulário no root
+        const payloadObj = {
+          ...lead,
+          ...formData, // Espalha os dados mapeados no root para facilitar integração
+          lead_id: lead.id,
+          submission_date: lead.createdAt
+        };
+        const payload = JSON.stringify(payloadObj);
 
-        // Estratégia: Fetch com keepalive e sem preflight (text/plain)
-        return fetch(integration.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: payload,
-          keepalive: true,
-          mode: 'no-cors' // Garante que o navegador não trave por causa de CORS
-        }).catch(err => console.error('[Webhook] Falha no Fetch:', err));
-      });
+        const promises = integrations.map(integration => {
+          if (!integration.url) return Promise.resolve();
+          console.log(`[Webhook] Enviando para: ${integration.name} (${integration.url})`);
 
-      await Promise.allSettled(promises);
-    }
+          // Estratégia: Fetch com keepalive. Tentamos JSON primeiro, mas com no-cors se necessário.
+          // Nota: Alguns CRMs exigem Content-Type: application/json correto.
+          return fetch(integration.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+            mode: 'no-cors' // Mantemos no-cors para evitar bloqueios de preflight em domínios sem CORS configurado
+          }).then(res => {
+            console.log(`[Webhook] Enviado com sucesso para: ${integration.name}`);
+          }).catch(err => {
+            console.error(`[Webhook] Erro ao enviar para ${integration.name}:`, err);
+          });
+        });
 
-    // Diagnostic Delay: Se houver redirecionamento, damos 1.5s extras para o browser terminar o handshake CORS/POST
-    if (form.settings.redirectUrl) {
-      console.log(`[System] Aguardando 1.5s para garantir entrega do webhook antes de redirecionar...`);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    }
+        await Promise.allSettled(promises);
+      }
 
-    setIsLoading(false);
+      // Diagnostic Delay: Se houver redirecionamento, damos 1.5s extras para o browser terminar o handshake CORS/POST
+      if (form.settings.redirectUrl) {
+        console.log(`[System] Aguardando 1.5s para garantir entrega do webhook antes de redirecionar...`);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
 
-    if (form.settings.redirectUrl) {
-      window.location.href = form.settings.redirectUrl;
-    } else {
-      setIsSubmitted(true);
+      setIsLoading(false);
+
+      if (form.settings.redirectUrl) {
+        window.location.href = form.settings.redirectUrl;
+      } else {
+        setIsSubmitted(true);
+      }
+    } catch (error) {
+      console.error('Erro ao processar formulário:', error);
+      alert('Houve um erro ao enviar seus dados. Por favor, tente novamente.');
+      setIsLoading(false);
     }
   };
+
 
   if (isSubmitted) {
     return (
