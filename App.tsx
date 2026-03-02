@@ -628,40 +628,66 @@ const PublicFormView = () => {
       }
 
       // Real Webhook Dispatch (Isolated by orgId)
+      console.log(`[Webhook] Buscando integrações para Org: ${form.orgId}`);
       const currentIntegrations = await db.getIntegrations(form.orgId);
+
       if (form.settings.webhookIds && form.settings.webhookIds.length > 0) {
         const integrations = currentIntegrations.filter(i => form.settings.webhookIds.includes(i.id));
+        console.log(`[Webhook] Total de integrações vinculadas ao formulário: ${integrations.length}`);
 
         // Payload amigável para CRM: Metadados do Lead + Dados do Formulário no root
         const payloadObj = {
           ...lead,
           ...formData, // Espalha os dados mapeados no root para facilitar integração
           lead_id: lead.id,
-          submission_date: lead.createdAt
+          submission_date: lead.createdAt,
+          form_name: form.name
         };
         const payload = JSON.stringify(payloadObj);
 
-        const promises = integrations.map(integration => {
-          if (!integration.url) return Promise.resolve();
-          console.log(`[Webhook] Enviando para: ${integration.name} (${integration.url})`);
+        const promises = integrations.map(async (integration) => {
+          if (!integration.url) return;
+          console.log(`[Webhook] Tentando envio para: ${integration.name} (${integration.url})`);
 
-          // Estratégia: Fetch com keepalive. Tentamos JSON primeiro, mas com no-cors se necessário.
-          // Nota: Alguns CRMs exigem Content-Type: application/json correto.
-          return fetch(integration.url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: payload,
-            keepalive: true,
-            mode: 'no-cors' // Mantemos no-cors para evitar bloqueios de preflight em domínios sem CORS configurado
-          }).then(res => {
-            console.log(`[Webhook] Enviado com sucesso para: ${integration.name}`);
-          }).catch(err => {
-            console.error(`[Webhook] Erro ao enviar para ${integration.name}:`, err);
-          });
+          try {
+            // TENTATIVA 1: Envio padrão com Content-Type correto (Pode disparar Preflight/CORS)
+            const response = await fetch(integration.url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+              keepalive: true
+            });
+
+            if (response.ok || response.type === 'opaque') {
+              console.log(`[Webhook] ✅ Sucesso no envio para: ${integration.name}`);
+            } else {
+              console.error(`[Webhook] ❌ Servidor retornou erro ${response.status} para: ${integration.name}`);
+              throw new Error(`Status ${response.status}`);
+            }
+          } catch (err) {
+            console.warn(`[Webhook] ⚠️ Falha no envio padrão (CORS ou rede), tentando Fallback para: ${integration.name}`);
+
+            // TENTATIVA 2: Fallback com no-cors (Não permite headers personalizados como application/json)
+            try {
+              await fetch(integration.url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: payload,
+                keepalive: true,
+                mode: 'no-cors'
+              });
+              console.log(`[Webhook] ℹ️ Envio via Fallback (no-cors) concluído para: ${integration.name}`);
+            } catch (fallbackErr) {
+              console.error(`[Webhook] ❌ Falha total no envio para ${integration.name}:`, fallbackErr);
+            }
+          }
         });
 
         await Promise.allSettled(promises);
+      } else {
+        console.log('[Webhook] Nenhum webhook configurado para este formulário.');
       }
+
 
       // Diagnostic Delay: Se houver redirecionamento, damos 1.5s extras para o browser terminar o handshake CORS/POST
       if (form.settings.redirectUrl) {
