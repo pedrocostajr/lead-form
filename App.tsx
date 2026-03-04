@@ -125,6 +125,7 @@ const Sidebar = () => {
     { label: 'Formulários', icon: ICONS.Forms, path: '/dashboard/forms' },
     { label: 'Leads', icon: ICONS.Leads, path: '/dashboard/leads' },
     { label: 'Integrações', icon: ICONS.Integrations, path: '/dashboard/integrations' },
+    { label: 'Configurações', icon: <Settings2 size={20} />, path: '/dashboard/settings' },
     { label: 'Ajuda', icon: <HelpCircle size={20} />, path: '/dashboard/help' },
   ];
 
@@ -1890,6 +1891,135 @@ const AdminUsersView = () => {
   );
 };
 
+const SettingsView = () => {
+  const { user, login } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    if (currentPassword !== user.password) {
+      alert('A senha atual está incorreta.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert('A nova senha e a confirmação não coincidem.');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('A nova senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updatedUser = { ...user, password: newPassword };
+      await db.saveUser(updatedUser);
+
+      // Update local storage and state via login (simulated refresh)
+      localStorage.setItem('lp_session', JSON.stringify(updatedUser));
+      alert('Senha atualizada com sucesso!');
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Erro ao atualizar senha:', error);
+      alert('Erro ao atualizar senha. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-10 max-w-2xl">
+      <header>
+        <h2 className="text-3xl font-black text-gray-900 tracking-tight">Configurações</h2>
+        <p className="text-gray-500 font-medium">Gerencie suas informações e segurança da conta.</p>
+      </header>
+
+      <div className="bg-white p-8 rounded-[40px] border shadow-sm space-y-8">
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Users size={20} className="text-blue-600" />
+            Informações do Perfil
+          </h3>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Nome</label>
+              <p className="font-bold text-gray-900">{user?.name}</p>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">E-mail</label>
+              <p className="font-bold text-gray-900">{user?.email}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-8 border-t space-y-6">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <ShieldCheck size={20} className="text-blue-600" />
+            Alterar Senha
+          </h3>
+
+          <form onSubmit={handleUpdatePassword} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Senha Atual</label>
+              <input
+                type="password"
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nova Senha</label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium"
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Confirmar Nova Senha</label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium"
+                  placeholder="Repita a nova senha"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Salvando...' : 'Salvar Nova Senha'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const InstructionsView = () => {
   return (
     <div className="space-y-10 max-w-4xl">
@@ -2005,6 +2135,7 @@ const App: React.FC = () => (
         <Route path="/dashboard/leads" element={<ProtectedRoute><Layout><LeadListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/integrations" element={<ProtectedRoute><Layout><IntegrationListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/admin/users" element={<ProtectedRoute><Layout><AdminUsersView /></Layout></ProtectedRoute>} />
+        <Route path="/dashboard/settings" element={<ProtectedRoute><Layout><SettingsView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/help" element={<ProtectedRoute><Layout><InstructionsView /></Layout></ProtectedRoute>} />
         <Route path="/f/:orgSlug/:formSlug" element={<PublicFormView />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
