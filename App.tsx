@@ -14,13 +14,23 @@ import { User, Role, Form, FormStatus, FormStep, FormBlock, BlockType, Column, S
 import { db } from './store';
 import { ICONS } from './constants';
 
-const cleanCanvaHtml = (html: string | undefined) => {
+const cleanCanvaHtml = (html: string) => {
   if (!html) return '';
-  if (html.trim().startsWith('<div')) {
-    const match = html.match(/<div[\s\S]*?<\/div>/);
-    return match ? match[0] : html;
+  return html.replace(/<script[\s\S]*?<\/script>/gi, '');
+};
+
+const formatPhoneNumber = (value: string) => {
+  if (!value) return value;
+  const phoneNumber = value.replace(/\D/g, '');
+  const phoneNumberLength = phoneNumber.length;
+  if (phoneNumberLength <= 2) return phoneNumber;
+  if (phoneNumberLength <= 6) {
+    return `(${phoneNumber.slice(0, 2)}) ${phoneNumber.slice(2)}`;
   }
-  return html;
+  if (phoneNumberLength <= 10) {
+    return `(${phoneNumber.slice(0, 2)}) ${phoneNumber.slice(2, 6)}-${phoneNumber.slice(6)}`;
+  }
+  return `(${phoneNumber.slice(0, 2)}) ${phoneNumber.slice(2, 7)}-${phoneNumber.slice(7, 11)}`;
 };
 
 // --- Auth Context ---
@@ -762,7 +772,13 @@ const PublicFormView = () => {
                           type={block.type === 'email' ? 'email' : 'text'}
                           placeholder={block.settings.placeholder}
                           value={formData[block.settings.mappingKey || block.id] || ''}
-                          onChange={(e) => setFormData({ ...formData, [block.settings.mappingKey || block.id]: e.target.value })}
+                          onChange={(e) => {
+                            let val = e.target.value;
+                            if (block.type === 'standard_contact') {
+                              val = formatPhoneNumber(val);
+                            }
+                            setFormData({ ...formData, [block.settings.mappingKey || block.id]: val });
+                          }}
                           className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium"
                         />
                       </div>
