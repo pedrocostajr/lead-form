@@ -1808,6 +1808,19 @@ const AdminUsersView = () => {
     }
   };
 
+  const handleResetPassword = async (user: User) => {
+    const DEFAULT_PASSWORD = 'Mudar@123';
+    if (!confirm(`Deseja resetar a senha de ${user.name} para a padrão (${DEFAULT_PASSWORD})?`)) return;
+
+    try {
+      await db.saveUser({ ...user, password: DEFAULT_PASSWORD });
+      alert(`Senha resetada com sucesso para: ${DEFAULT_PASSWORD}`);
+    } catch (error) {
+      alert('Erro ao resetar senha.');
+      console.error(error);
+    }
+  };
+
   if (loading) return <div className="p-20 text-center font-bold">Carregando painel administrativo...</div>;
 
   return (
@@ -1858,6 +1871,13 @@ const AdminUsersView = () => {
                       {user.status === 'SUSPENDED' && (
                         <button onClick={() => handleApprove(user)} className="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-all">Reativar</button>
                       )}
+                      <button
+                        onClick={() => handleResetPassword(user)}
+                        className="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold hover:bg-gray-200 transition-all"
+                        title="Resetar para senha padrão"
+                      >
+                        Resetar Senha
+                      </button>
                     </div>
                   </td>
                 </tr>
