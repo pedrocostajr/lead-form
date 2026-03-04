@@ -8,7 +8,7 @@ import {
   BarChart3, LogOut, ExternalLink, Edit, Eye, Filter, Download, X,
   Type, Image as ImageIcon, Video, Square, GripVertical, Copy, ArrowUp, ArrowDown,
   Columns, Columns2, Columns3, MoreVertical, Hash, Calendar, HelpCircle,
-  Search, AlertCircle, Send, Clock
+  Search, AlertCircle, Send, Clock, EyeOff
 } from 'lucide-react';
 import { User, Role, Form, FormStatus, FormStep, FormBlock, BlockType, Column, StepLayout, Lead, Integration, Organization } from './types';
 import { db } from './store';
@@ -1298,6 +1298,7 @@ const LoginView = () => {
   const { login, user } = useAuth();
   const [email, setEmail] = useState('contato@leadsign.com.br');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -1314,7 +1315,26 @@ const LoginView = () => {
         </div>
         <div className="space-y-4">
           <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">E-mail</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="seu@email.com" /></div>
-          <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">Senha</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="••••••••" /></div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">Senha</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium pr-14"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
+                title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
           <button onClick={() => login(email, password)} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all duration-300">Entrar na Plataforma</button>
         </div>
         <div className="text-center pt-4">
@@ -1329,6 +1349,7 @@ const SignupView = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -1384,8 +1405,28 @@ const SignupView = () => {
         <div className="space-y-4">
           <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">Nome Completo</label><input value={name} onChange={e => setName(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="Seu nome" /></div>
           <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">E-mail</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="seu@email.com" /></div>
-          <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">Senha</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium" placeholder="••••••••" /></div>
-          <button onClick={handleSignup} disabled={loading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all duration-300 disabled:opacity-50">
+          <div>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1 px-4">Senha</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 ring-blue-500/20 transition-all font-medium pr-14"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
+                title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+          <button onClick={handleSignup}
+            disabled={loading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all duration-300 disabled:opacity-50">
             {loading ? 'Criando conta...' : 'Cadastrar agora'}
           </button>
         </div>
@@ -1896,6 +1937,9 @@ const SettingsView = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -1971,38 +2015,68 @@ const SettingsView = () => {
           <form onSubmit={handleUpdatePassword} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Senha Atual</label>
-              <input
-                type="password"
-                required
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showCurrent ? "text" : "password"}
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium pr-14"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrent(!showCurrent)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
+                  title={showCurrent ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showCurrent ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nova Senha</label>
-                <input
-                  type="password"
-                  required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium"
-                  placeholder="Mínimo 6 caracteres"
-                />
+                <div className="relative">
+                  <input
+                    type={showNew ? "text" : "password"}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium pr-14"
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNew(!showNew)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
+                    title={showNew ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {showNew ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Confirmar Nova Senha</label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium"
-                  placeholder="Repita a nova senha"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirm ? "text" : "password"}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:border-blue-500 transition-all font-medium pr-14"
+                    placeholder="Repita a nova senha"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
+                    title={showConfirm ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
             </div>
 
