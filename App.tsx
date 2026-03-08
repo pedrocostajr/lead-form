@@ -8,7 +8,7 @@ import {
   BarChart3, LogOut, ExternalLink, Edit, Eye, Filter, Download, X,
   Type, Image as ImageIcon, Video, Square, GripVertical, Copy, ArrowUp, ArrowDown,
   Columns, Columns2, Columns3, MoreVertical, Hash, Calendar, HelpCircle,
-  Search, AlertCircle, Send, Clock, EyeOff
+  Search, AlertCircle, Send, Clock, EyeOff, Menu, CheckCircle, Slash, RefreshCw, Key, Mail
 } from 'lucide-react';
 import { User, Role, Form, FormStatus, FormStep, FormBlock, BlockType, Column, StepLayout, Lead, Integration, Organization } from './types';
 import { db } from './store';
@@ -115,7 +115,7 @@ const useAuth = () => {
 
 // --- Layout & Sidebar ---
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean, onClose?: () => void }) => {
   const { logout, user, isGlobalView, setGlobalView } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -133,57 +133,101 @@ const Sidebar = () => {
     menuItems.push({ label: 'Usuários', icon: <Users size={20} />, path: '/dashboard/admin/users' });
   }
 
+  const handleNav = (path: string) => {
+    navigate(path);
+    if (onClose) onClose();
+  };
+
   return (
-    <aside className="w-64 bg-white border-r h-screen flex flex-col fixed left-0 top-0 z-40">
-      <div className="p-6 border-b">
-        <h1 className="text-xl font-bold text-blue-600 flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">L</div>
-          Lead Form
-        </h1>
-      </div>
-      <nav className="flex-1 p-4 space-y-1">
-        {menuItems.map((item) => (
-          <button
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors font-medium ${location.pathname.startsWith(item.path) ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </nav>
-      {user?.role === Role.SUPER_ADMIN && (
-        <div className="p-4 border-t px-6">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Modo Global</span>
-            <button
-              onClick={() => setGlobalView(!isGlobalView)}
-              className={`w-10 h-5 rounded-full p-1 transition-colors ${isGlobalView ? 'bg-blue-600' : 'bg-gray-200'}`}
-            >
-              <div className={`w-3 h-3 bg-white rounded-full transition-transform ${isGlobalView ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
-          <p className="text-[9px] text-gray-400 mt-1">Ver dados de todas as orgs</p>
-        </div>
+    <>
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+        />
       )}
-      <div className="p-4 border-t">
-        <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium">
-          {ICONS.Logout}
-          <span>Sair</span>
-        </button>
-      </div>
-    </aside>
+      <aside className={`w-64 bg-white border-r h-screen flex flex-col fixed left-0 top-0 z-50 transition-transform duration-300 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b flex items-center justify-between">
+          <h1 className="text-xl font-bold text-blue-600 flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">L</div>
+            Lead Form
+          </h1>
+          <button onClick={onClose} className="lg:hidden text-gray-400 hover:text-gray-600">
+            <X size={24} />
+          </button>
+        </div>
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {menuItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => handleNav(item.path)}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors font-medium ${location.pathname.startsWith(item.path) ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        {user?.role === Role.SUPER_ADMIN && (
+          <div className="p-4 border-t px-6">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Modo Global</span>
+              <button
+                onClick={() => setGlobalView(!isGlobalView)}
+                className={`w-10 h-5 rounded-full p-1 transition-colors ${isGlobalView ? 'bg-blue-600' : 'bg-gray-200'}`}
+              >
+                <div className={`w-3 h-3 bg-white rounded-full transition-transform ${isGlobalView ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            <p className="text-[9px] text-gray-400 mt-1">Ver dados de todas as orgs</p>
+          </div>
+        )}
+        <div className="p-4 border-t">
+          <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium">
+            {ICONS.Logout}
+            <span>Sair</span>
+          </button>
+        </div>
+      </aside>
+    </>
   );
 };
 
-const Layout = ({ children }: { children: React.ReactNode }) => (
-  <div className="min-h-screen bg-gray-50 flex">
-    <Sidebar />
-    <main className="flex-1 ml-64 p-8 overflow-x-hidden">{children}</main>
-  </div>
-);
+const Layout = ({ children }: { children: React.ReactNode }) => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  // Close sidebar on navigation (redundant but safe)
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
+      {/* Mobile Top Header */}
+      <header className="lg:hidden bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+        <h1 className="text-xl font-bold text-blue-600 flex items-center gap-2">
+          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-sm">L</div>
+          <span>Lead Form</span>
+        </h1>
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+        >
+          <Menu size={24} />
+        </button>
+      </header>
+
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+
+      <main className="flex-1 lg:ml-64 p-4 md:p-8 overflow-x-hidden w-full max-w-7xl mx-auto">
+        {children}
+      </main>
+    </div>
+  );
+};
 
 // --- Dashboard View ---
 
@@ -242,11 +286,31 @@ const DashboardView = () => {
       </div>
 
       <div className="bg-white rounded-[40px] border shadow-sm overflow-hidden">
-        <div className="p-8 border-b flex items-center justify-between">
-          <h3 className="text-xl font-bold">Leads Recentes</h3>
+        <div className="p-6 md:p-8 border-b flex items-center justify-between">
+          <h3 className="text-lg md:text-xl font-bold">Leads Recentes</h3>
           <Link to="/dashboard/leads" className="text-blue-600 font-bold text-sm hover:underline">Ver todos</Link>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile View: Cards */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {leads.slice(0, 5).map(lead => (
+            <div key={lead.id} className="p-6 space-y-2">
+              <div className="flex justify-between items-start">
+                <span className="font-bold text-gray-900">{lead.data.name || lead.data.full_name || 'Anônimo'}</span>
+                <span className="text-[10px] text-gray-400 font-medium">{new Date(lead.createdAt).toLocaleDateString()}</span>
+              </div>
+              <p className="text-xs text-gray-400">{lead.data.email}</p>
+              <div className="pt-1">
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-wider">
+                  {forms.find(f => f.id === lead.formId)?.name || 'Removido'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
               <tr>
@@ -345,21 +409,53 @@ const LeadListView = () => {
   if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Leads...</div>;
 
   return (
-    <div className="space-y-10">
-      <header className="flex items-center justify-between">
+    <div className="space-y-6 md:space-y-10">
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Leads</h2>
-          <p className="text-gray-500 font-medium">Gerencie sua base de contatos capturados.</p>
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Leads</h2>
+          <p className="text-sm md:text-base text-gray-500 font-medium">Gerencie sua base de contatos capturados.</p>
         </div>
         <button
           onClick={exportToCSV}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+          className="flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 w-full md:w-auto"
         >
           <Download size={18} /> Exportar CSV
         </button>
       </header>
 
-      <div className="bg-white rounded-[40px] border shadow-sm overflow-hidden">
+      {/* Mobile View: Cards */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {leads.map(lead => (
+          <div key={lead.id} className="bg-white p-6 rounded-3xl border shadow-sm space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="font-bold text-gray-900 truncate">{lead.data.name || lead.data.full_name || 'Anônimo'}</span>
+                <span className="text-xs text-gray-400 truncate">{lead.data.email}</span>
+                {lead.data.phone && <span className="text-xs text-blue-600 font-medium">{lead.data.phone}</span>}
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <span className="text-[10px] text-gray-400 font-medium">{new Date(lead.createdAt).toLocaleDateString()}</span>
+                <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full uppercase tracking-widest">{lead.status}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-50 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Form: {forms.find(f => f.id === lead.formId)?.name || 'Removido'}
+              </span>
+              <button
+                onClick={() => handleDeleteLead(lead.id)}
+                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block bg-white rounded-[40px] border shadow-sm overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
             <tr>
@@ -367,7 +463,6 @@ const LeadListView = () => {
               <th className="px-8 py-4">Dados Extras</th>
               <th className="px-8 py-4">Formulário</th>
               <th className="px-8 py-4">Status</th>
-              <th className="px-8 py-4">Data</th>
               <th className="px-8 py-4 w-10"></th>
             </tr>
           </thead>
@@ -375,29 +470,26 @@ const LeadListView = () => {
             {leads.map(lead => (
               <tr key={lead.id} className="hover:bg-gray-50/50 group">
                 <td className="px-8 py-6">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-gray-900">{lead.data.name || lead.data.full_name || 'Desconhecido'}</span>
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      {lead.data.email && <span>{lead.data.email}</span>}
-                      {lead.data.email && lead.data.phone && <span className="w-1 h-1 bg-gray-200 rounded-full" />}
-                      {lead.data.phone && <span className="font-medium text-blue-600">{lead.data.phone}</span>}
-                    </div>
-                  </div>
+                  <span className="font-bold text-gray-900">{lead.data.name || lead.data.full_name || 'Anônimo'}</span>
+                  <p className="text-xs text-gray-400">{lead.data.email}</p>
+                  {lead.data.phone && <p className="text-xs text-blue-600 font-medium">{lead.data.phone}</p>}
                 </td>
                 <td className="px-8 py-6">
-                  <div className="flex flex-wrap gap-1">
-                    {Object.entries(lead.data).map(([k, v]) => !['name', 'email', 'phone', 'full_name'].includes(k) && (
-                      <span key={k} className="text-[9px] bg-gray-100 px-1.5 py-0.5 rounded font-bold text-gray-500 uppercase">{k}: {v as string}</span>
+                  <div className="flex flex-wrap gap-1 max-w-xs">
+                    {Object.entries(lead.data).filter(([k]) => !['name', 'email', 'phone', 'full_name'].includes(k)).map(([k, v]) => (
+                      <span key={k} className="text-[9px] bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-medium">
+                        {k}: {String(v)}
+                      </span>
                     ))}
                   </div>
                 </td>
                 <td className="px-8 py-6 text-sm font-medium text-gray-500">
-                  {forms.find(f => f.id === lead.formId)?.name}
+                  {forms.find(f => f.id === lead.formId)?.name || 'Removido'}
                 </td>
                 <td className="px-8 py-6">
-                  <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-bold uppercase tracking-widest">Novo</span>
+                  <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full uppercase tracking-widest">{lead.status}</span>
+                  <p className="text-[9px] text-gray-400 mt-1">{new Date(lead.createdAt).toLocaleDateString()}</p>
                 </td>
-                <td className="px-8 py-6 text-sm text-gray-400">{new Date(lead.createdAt).toLocaleString()}</td>
                 <td className="px-8 py-6 text-right">
                   <button onClick={() => handleDeleteLead(lead.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100">
                     <Trash2 size={16} />
@@ -1866,13 +1958,62 @@ const AdminUsersView = () => {
   if (loading) return <div className="p-20 text-center font-bold">Carregando painel administrativo...</div>;
 
   return (
-    <div className="space-y-10">
-      <header>
-        <h2 className="text-3xl font-black text-gray-900 tracking-tight">Gestão de Usuários</h2>
-        <p className="text-gray-500 font-medium">Aprove ou suspenda o acesso de corretores à plataforma.</p>
+    <div className="space-y-6 md:space-y-10">
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Gestão de Usuários</h2>
+          <p className="text-sm md:text-base text-gray-500 font-medium">Aprove ou suspenda o acesso de corretores à plataforma.</p>
+        </div>
       </header>
 
-      <div className="bg-white rounded-[40px] border shadow-sm overflow-hidden">
+      {/* Mobile View: Cards */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {users.filter(u => u.role !== Role.SUPER_ADMIN).map(user => {
+          const org = organizations.find(o => o.id === user.orgId);
+          return (
+            <div key={user.id} className="bg-white p-5 rounded-3xl border shadow-sm space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="flex flex-col">
+                  <span className="font-bold text-gray-900 text-lg leading-tight">{user.name}</span>
+                  <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">{org?.name || 'Sem Org'}</span>
+                </div>
+                <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full tracking-widest ${user.status === 'APPROVED' ? 'bg-green-50 text-green-600' :
+                  user.status === 'PENDING' ? 'bg-yellow-50 text-yellow-600' :
+                    'bg-red-50 text-red-600'
+                  }`}>
+                  {user.status}
+                </span>
+              </div>
+
+              <div className="text-xs text-gray-500 font-medium border-t border-gray-50 pt-3">
+                <p className="flex items-center gap-2 mb-2"><Mail size={14} className="text-gray-400" /> {user.email}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                {user.status === 'PENDING' && (
+                  <button onClick={() => handleApprove(user)} className="bg-blue-600 text-white px-4 py-3 rounded-xl text-xs font-bold shadow-lg shadow-blue-100 flex items-center justify-center gap-2"><CheckCircle size={14} /> Aprovar</button>
+                )}
+                {user.status === 'APPROVED' && (
+                  <button onClick={() => handleSuspend(user)} className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><Slash size={14} /> Suspender</button>
+                )}
+                {user.status === 'SUSPENDED' && (
+                  <button onClick={() => handleApprove(user)} className="bg-green-600 text-white px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2"><RefreshCw size={14} /> Reativar</button>
+                )}
+                <button
+                  onClick={() => handleResetPassword(user)}
+                  className="bg-gray-50 text-gray-500 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
+                  title="Resetar para senha padrão"
+                >
+                  <Key size={14} /> Senha
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block bg-white rounded-[40px] border shadow-sm overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
             <tr>
