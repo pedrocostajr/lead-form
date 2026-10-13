@@ -12,24 +12,36 @@ export const LandingPageView: React.FC = () => {
   const [previewTab, setPreviewTab] = useState<'pagelead' | 'leadform'>('pagelead');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  const metaPixelId = '1429839067462392';
   const checkoutMonthlyUrl = 'https://os.phoenixrise.com.br/k/pr_awszpobtrk5x';
   const checkoutAnnualUrl = 'https://os.phoenixrise.com.br/k/pr_gu5p32ovnmti';
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).fbq) {
+    // Injeção do Meta Pixel na página de vendas
+    if (!(window as any).fbq) {
+      (function(f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
+        if (f.fbq) return;
+        n = f.fbq = function() {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = !0;
+        n.version = '2.0';
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = !0;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+    }
+
+    if ((window as any).fbq) {
+      (window as any).fbq('init', metaPixelId);
       (window as any).fbq('track', 'PageView');
     }
   }, []);
-
-  const handleCheckoutClick = (planName: string, value: number) => {
-    if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'InitiateCheckout', {
-        content_name: planName,
-        value: value,
-        currency: 'BRL'
-      });
-    }
-  };
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -71,6 +83,16 @@ export const LandingPageView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
+      {/* Meta Pixel Fallback */}
+      <noscript>
+        <img
+          height="1"
+          width="1"
+          style={{ display: 'none' }}
+          src={`https://www.facebook.com/tr?id=${metaPixelId}&ev=PageView&noscript=1`}
+          alt=""
+        />
+      </noscript>
       {/* Top Banner de Oferta Especial */}
       <div className="bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-700 text-white text-xs py-2.5 px-4 text-center font-bold tracking-wide flex items-center justify-center gap-2 shadow-inner">
         <Flame size={15} className="text-amber-300 animate-pulse" />
@@ -723,7 +745,6 @@ export const LandingPageView: React.FC = () => {
                   href={checkoutMonthlyUrl}
                   target="_blank"
                   rel="noreferrer"
-                  onClick={() => handleCheckoutClick('Plano Mensal LeadForm + PageLead', 10.0)}
                   className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:border-blue-500"
                 >
                   Assinar Mensal por R$ 10,00 <ArrowRight size={16} />
@@ -796,7 +817,6 @@ export const LandingPageView: React.FC = () => {
                   href={checkoutAnnualUrl}
                   target="_blank"
                   rel="noreferrer"
-                  onClick={() => handleCheckoutClick('Plano Anual LeadForm + PageLead', 67.0)}
                   className="w-full py-4.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-emerald-600/30 hover:scale-[1.02]"
                 >
                   Garantir Oferta Anual por R$ 67 <ArrowRight size={16} />
