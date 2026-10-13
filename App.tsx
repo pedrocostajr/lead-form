@@ -15,6 +15,7 @@ import { User, Role, Form, FormStatus, FormStep, FormBlock, BlockType, Column, S
 import { db } from './store';
 import { ICONS } from './constants';
 import { PageLeadListView, PageLeadDetailView, PublicPageLeadView } from './PageLead';
+import { LandingPageView } from './LandingPage';
 
 const cleanCanvaHtml = (html: string) => {
   if (!html) return '';
@@ -130,6 +131,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean, onClose?: () => void }
     { label: 'Leads', icon: ICONS.Leads, path: '/dashboard/leads' },
     { label: 'Integrações', icon: ICONS.Integrations, path: '/dashboard/integrations' },
     { label: 'Configurações', icon: <Settings2 size={20} />, path: '/dashboard/settings' },
+    { label: 'Página de Vendas', icon: <Sparkles size={20} />, path: '/planos' },
     { label: 'Ajuda', icon: <HelpCircle size={20} />, path: '/dashboard/help' },
   ];
 
@@ -1486,8 +1488,9 @@ const LoginView = () => {
           </div>
           <button onClick={() => login(email, password)} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all duration-300">Entrar na Plataforma</button>
         </div>
-        <div className="text-center pt-4">
+        <div className="text-center pt-4 space-y-2">
           <p className="text-sm text-gray-500">Ainda não tem conta? <button onClick={() => navigate('/signup')} className="text-blue-600 font-bold hover:underline">Cadastre-se como Corretor</button></p>
+          <p className="text-xs text-gray-400"><button onClick={() => navigate('/')} className="text-gray-500 hover:text-blue-600 font-bold">← Conhecer o Combo LeadForm + PageLead</button></p>
         </div>
       </div>
     </div>
@@ -1579,8 +1582,9 @@ const SignupView = () => {
             {loading ? 'Criando conta...' : 'Cadastrar agora'}
           </button>
         </div>
-        <div className="text-center pt-4">
+        <div className="text-center pt-4 space-y-2">
           <p className="text-sm text-gray-500">Já tem conta? <button onClick={() => navigate('/login')} className="text-blue-600 font-bold hover:underline">Fazer Login</button></p>
+          <p className="text-xs text-gray-400"><button onClick={() => navigate('/')} className="text-gray-500 hover:text-blue-600 font-bold">← Conhecer o Combo LeadForm + PageLead</button></p>
         </div>
       </div>
     </div>
@@ -2635,6 +2639,9 @@ const App: React.FC = () => (
   <AuthProvider>
     <HashRouter>
       <Routes>
+        <Route path="/" element={<LandingPageView />} />
+        <Route path="/vendas" element={<LandingPageView />} />
+        <Route path="/planos" element={<LandingPageView />} />
         <Route path="/login" element={<LoginView />} />
         <Route path="/signup" element={<SignupView />} />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><DashboardView /></Layout></ProtectedRoute>} />
@@ -2650,7 +2657,7 @@ const App: React.FC = () => (
         <Route path="/dashboard/help" element={<ProtectedRoute><Layout><InstructionsView /></Layout></ProtectedRoute>} />
         <Route path="/f/:orgSlug/:formSlug" element={<PublicFormView />} />
         <Route path="/p/:orgSlug/:pageSlug" element={<PublicPageLeadView />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>
   </AuthProvider>
