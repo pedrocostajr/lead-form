@@ -1371,14 +1371,14 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                 <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 space-y-2">
                   <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
                     <ImageIcon size={14} className="text-emerald-600" />
-                    Hospedar Fotos Grátis (ImgBB)
+                    Hospedar Fotos Grátis (Postimages)
                   </div>
                   <p className="text-[10px] text-emerald-900 leading-relaxed font-medium">
-                    Envie fotos direto no ImgBB e cole o <b>Link direto</b> (terminado em .jpg ou .png).
+                    Envie fotos no Postimages sem cadastro e copie a linha <b>Link direto</b>.
                   </p>
                   <div className="flex gap-2">
-                    <a href="https://imgbb.com/upload" target="_blank" rel="noreferrer" className="flex-1 text-center py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-1">
-                      Abrir ImgBB <ExternalLink size={12} />
+                    <a href="https://postimages.org" target="_blank" rel="noreferrer" className="flex-1 text-center py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-1">
+                      Abrir Postimages <ExternalLink size={12} />
                     </a>
                     <Link to="/dashboard/images-guide" target="_blank" className="flex-1 text-center py-2 bg-white border border-emerald-200 text-emerald-700 rounded-xl text-[10px] font-bold hover:bg-emerald-50 transition-all">
                       Ver Guia
@@ -2354,11 +2354,11 @@ const InstructionsView = () => {
           </div>
           <h3 className="text-xl font-bold">5. Hospedar Fotos de Imóveis</h3>
           <p className="text-sm text-gray-500 leading-relaxed">
-            Recomendamos o <b>ImgBB</b> para hospedar as fotos dos seus imóveis gratuitamente. Obtenha links diretos para colocar na foto de capa e galeria do Page Lead.
+            Recomendamos o <b>Postimages</b> para hospedar as fotos dos seus imóveis gratuitamente e sem necessidade de cadastro. Obtenha o Link Direto para colocar na foto de capa e galeria do Page Lead.
           </p>
           <div className="flex gap-2 pt-1">
-            <a href="https://imgbb.com/upload" target="_blank" rel="noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-blue-700 transition-all">
-              Abrir ImgBB <ExternalLink size={13} />
+            <a href="https://postimages.org" target="_blank" rel="noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-blue-700 transition-all">
+              Abrir Postimages <ExternalLink size={13} />
             </a>
             <Link to="/dashboard/images-guide" className="px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold border transition-all">
               Ver Guia Passo a Passo
@@ -2382,19 +2382,32 @@ const InstructionsView = () => {
 
 const ImagesGuideView = () => {
   const [testUrl, setTestUrl] = useState('');
-  const [imgStatus, setImgStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [imgStatus, setImgStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'warning_page_link'>('idle');
 
   const handleTestImage = (url: string) => {
     setTestUrl(url);
-    if (!url.trim()) {
+    const trimmed = url.trim();
+    if (!trimmed) {
       setImgStatus('idle');
       return;
     }
+
+    // Check if user accidentally pasted the viewer page link
+    if (trimmed.includes('postimg.cc/') && !trimmed.includes('i.postimg.cc/')) {
+      setImgStatus('warning_page_link');
+      return;
+    }
+
+    if (trimmed.includes('ibb.co/') && !trimmed.includes('i.ibb.co/')) {
+      setImgStatus('warning_page_link');
+      return;
+    }
+
     setImgStatus('loading');
     const img = new Image();
     img.onload = () => setImgStatus('success');
     img.onerror = () => setImgStatus('error');
-    img.src = url.trim();
+    img.src = trimmed;
   };
 
   return (
@@ -2406,16 +2419,16 @@ const ImagesGuideView = () => {
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Como Hospedar Fotos dos Imóveis</h2>
           <p className="text-gray-500 font-medium">
-            Aprenda o método mais simples e gratuito usando o <b>ImgBB</b> para obter links diretos para a Foto de Capa e Galeria do Page Lead.
+            Recomendamos o <b>Postimages</b>: a ferramenta mais rápida, estável e gratuita para subir fotos sem cadastro e pegar o Link Direto com 1 clique.
           </p>
         </div>
         <a
-          href="https://imgbb.com/upload"
+          href="https://postimages.org"
           target="_blank"
           rel="noreferrer"
           className="flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all shrink-0"
         >
-          Abrir ImgBB (imgbb.com) <ExternalLink size={18} />
+          Abrir Postimages (postimages.org) <ExternalLink size={18} />
         </a>
       </header>
 
@@ -2425,9 +2438,9 @@ const ImagesGuideView = () => {
           <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-sm">
             1
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Acesse o ImgBB</h3>
+          <h3 className="text-xl font-bold text-gray-900">Acesse o Postimages</h3>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Clique no botão azul <b>"Abrir ImgBB"</b> ou acesse <a href="https://imgbb.com" target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline">imgbb.com</a>. O serviço é 100% gratuito. Não é obrigatório criar conta, mas você pode criar se quiser organizar suas fotos por álbuns de imóveis.
+            Clique no botão azul <b>"Abrir Postimages"</b> acima ou acesse <a href="https://postimages.org" target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline">postimages.org</a>. O serviço é 100% gratuito e não exige nenhum cadastro ou login.
           </p>
         </div>
 
@@ -2435,38 +2448,38 @@ const ImagesGuideView = () => {
           <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-sm">
             2
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Selecione as Fotos do Imóvel</h3>
+          <h3 className="text-xl font-bold text-gray-900">Clique em "Escolher imagens"</h3>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Clique no botão <b>"Começar a enviar"</b> e selecione as fotos do seu computador ou celular (capa, fachada, salas, quartos, cozinha e área de lazer).
+            Clique no botão <b>"Escolher imagens"</b> e selecione do seu computador ou celular as fotos do imóvel (foto de capa, fachada, salas, quartos, cozinha e lazer). O upload inicia na mesma hora!
           </p>
           <div className="p-3 bg-gray-50 rounded-xl text-xs text-gray-500 font-medium">
-            💡 Dica: Para a <b>Foto de Capa</b>, dê preferência a fotos na horizontal (paisagem) e com boa iluminação.
+            💡 Dica: Para a <b>Foto de Capa</b>, escolha uma foto na horizontal (paisagem) com excelente iluminação.
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-[36px] border shadow-sm space-y-4 border-emerald-200 ring-2 ring-emerald-500/10">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm">
+            3
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Copie a linha "Link direto"</h3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Assim que a foto terminar de subir, o Postimages exibirá várias caixas de links. Localize a 2ª linha chamada <b>"Link direto"</b> e clique no botão azul com ícone de copiar ao lado!
+          </p>
+          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 space-y-1">
+            <p className="font-bold">✅ Formato Correto do Link Direto:</p>
+            <p className="font-mono text-[11px] truncate">https://i.postimg.cc/abc1234/foto-imovel.jpg</p>
+            <p className="text-[10px] text-emerald-700 mt-1">Sempre começa com <b>i.postimg.cc</b> e termina com a extensão da foto (<b>.jpg</b> ou <b>.png</b>).</p>
           </div>
         </div>
 
         <div className="bg-white p-8 rounded-[36px] border shadow-sm space-y-4">
           <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-sm">
-            3
-          </div>
-          <h3 className="text-xl font-bold text-gray-900">Mantenha as Fotos para Sempre</h3>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            Na opção "Eliminar imagem automaticamente", certifique-se de selecionar <b>"Não eliminar automaticamente"</b> para que o link nunca expire. Depois, clique em <b>"Enviar"</b>.
-          </p>
-        </div>
-
-        <div className="bg-white p-8 rounded-[36px] border shadow-sm space-y-4 border-emerald-200 ring-2 ring-emerald-500/10">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm">
             4
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Copie o "Link Direto" (O Segredo!)</h3>
+          <h3 className="text-xl font-bold text-gray-900">Cole no Page Lead</h3>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Após o upload ser concluído, no menu suspenso de <b>"Códigos de incorporação"</b>, selecione a opção <b>"Links diretos"</b>.
+            Volte para o seu imóvel no <b>Page Lead</b>, vá na aba <b>Fotos & Lazer</b> e cole no campo <b>Foto de Capa</b> ou clique em <b>+ Foto</b> na Galeria. A foto aparecerá imediatamente no preview!
           </p>
-          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 space-y-1">
-            <p className="font-bold">✅ Formato Correto do Link Direto:</p>
-            <p className="font-mono text-[11px] truncate">https://i.ibb.co/abc1234/foto-imovel.jpg</p>
-            <p className="text-[10px] text-emerald-700 mt-1">Sempre começa com <b>i.ibb.co</b> e termina com a extensão da foto (<b>.jpg</b> ou <b>.png</b>).</p>
-          </div>
         </div>
       </div>
 
@@ -2475,7 +2488,7 @@ const ImagesGuideView = () => {
         <div>
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Testador de Links</span>
           <h3 className="text-2xl font-black text-gray-900">Testar se a sua Foto Carrega</h3>
-          <p className="text-sm text-gray-500">Cole o link que você copiou do ImgBB no campo abaixo para validar se ele é um link direto funcional.</p>
+          <p className="text-sm text-gray-500">Cole o link que você copiou do Postimages no campo abaixo para validar se ele é um link direto funcional.</p>
         </div>
 
         <div className="space-y-3">
@@ -2483,12 +2496,23 @@ const ImagesGuideView = () => {
             type="text"
             value={testUrl}
             onChange={e => handleTestImage(e.target.value)}
-            placeholder="Cole o link aqui (ex: https://i.ibb.co/.../foto.jpg)"
+            placeholder="Cole o link aqui (ex: https://i.postimg.cc/.../foto.jpg)"
             className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-blue-600 text-sm font-mono"
           />
 
           {imgStatus === 'loading' && (
             <p className="text-xs text-blue-600 font-bold animate-pulse">Testando carregamento da imagem...</p>
+          )}
+
+          {imgStatus === 'warning_page_link' && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-2 animate-in fade-in">
+              <p className="font-bold flex items-center gap-1.5 text-amber-800">
+                <AlertCircle size={16} /> Você copiou o link da página em vez do "Link direto"!
+              </p>
+              <p className="leading-relaxed">
+                Esse link (ex: <code>postimg.cc/...</code>) abre a página web com botões, não a imagem pura. No Postimages, procure a 2ª linha chamada <b>"Link direto"</b> (que começa com <code>https://i.postimg.cc/</code> e termina com <code>.jpg</code>) e clique no botão de cópia ao lado dela.
+              </p>
+            </div>
           )}
 
           {imgStatus === 'success' && (
@@ -2509,7 +2533,7 @@ const ImagesGuideView = () => {
                 <AlertCircle size={15} /> Não conseguimos carregar a imagem com esse endereço.
               </p>
               <p className="text-red-700">
-                Certifique-se de que no ImgBB você selecionou a opção <b>"Links diretos"</b> (o link deve começar com <code>i.ibb.co</code> e terminar com <code>.jpg</code> ou <code>.png</code>). Se colou o link da página com visualizador (ex: <code>imgbb.com/xyz</code>), o navegador não conseguirá carregar a foto na Landing Page.
+                Certifique-se de que no Postimages você selecionou a opção <b>"Link direto"</b> (o link deve começar com <code>i.postimg.cc</code> e terminar com <code>.jpg</code> ou <code>.png</code>).
               </p>
             </div>
           )}
@@ -2521,7 +2545,7 @@ const ImagesGuideView = () => {
         <div className="space-y-1">
           <h4 className="font-bold text-gray-900 text-lg">Outras opções gratuitas de hospedagem</h4>
           <p className="text-sm text-gray-500">
-            Você também pode usar o <a href="https://postimages.org" target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline">Postimages</a> (selecionando 'Link direto') ou o <a href="https://canva.com" target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline">Canva</a> para incorporar artes com código HTML.
+            Você também pode usar o <a href="https://imgchest.com" target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline">ImgChest</a> ou o <a href="https://canva.com" target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline">Canva</a> para incorporar artes prontas.
           </p>
         </div>
         <a

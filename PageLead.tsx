@@ -1977,7 +1977,7 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
               {/* SECTION: MEDIA & FEATURES */}
               {editorSection === 'media' && (
                 <div className="space-y-6">
-                  {/* ImgBB Hosting Helper Banner */}
+                  {/* Postimages Hosting Helper Banner */}
                   <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
@@ -1987,20 +1987,20 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
                         Onde hospedar as fotos do imóvel?
                       </div>
                       <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-700 tracking-wider">
-                        Recomendado
+                        Recomendado: Postimages
                       </span>
                     </div>
                     <p className="text-[11px] text-blue-800 leading-relaxed">
-                      Recomendamos o <b>ImgBB</b>: é 100% gratuito, sem limite de fotos e gera o <b>Link direto</b> que funciona perfeitamente na capa e na galeria.
+                      Recomendamos o <b>Postimages</b>: 100% gratuito, super rápido, não exige cadastro e gera na hora o <b>Link direto</b> com um clique para a foto de capa e galeria.
                     </p>
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       <a
-                        href="https://imgbb.com/upload"
+                        href="https://postimages.org"
                         target="_blank"
                         rel="noreferrer"
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
                       >
-                        Abrir ImgBB (Hospedar Fotos) <ExternalLink size={13} />
+                        Abrir Postimages (Hospedar Fotos) <ExternalLink size={13} />
                       </a>
                       <Link
                         to="/dashboard/images-guide"
@@ -2015,11 +2015,14 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
                   <div className="space-y-3">
                     <h3 className="font-black text-gray-900 text-base border-b pb-2">Foto Principal & Vídeo</h3>
                     <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">URL da Foto de Capa (Hero)</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase">URL da Foto de Capa (Hero)</label>
+                        <span className="text-[9px] text-blue-600 font-semibold">Cole o "Link direto" do Postimages</span>
+                      </div>
                       <input
                         value={page.property.heroImage}
                         onChange={e => setPage({ ...page, property: { ...page.property, heroImage: e.target.value } })}
-                        placeholder="https://..."
+                        placeholder="https://i.postimg.cc/.../foto.jpg"
                         className="w-full px-4 py-2.5 border rounded-xl text-xs font-mono outline-none focus:border-blue-600"
                       />
                     </div>
