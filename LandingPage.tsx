@@ -12,8 +12,8 @@ export const LandingPageView: React.FC = () => {
   const [previewTab, setPreviewTab] = useState<'pagelead' | 'leadform'>('pagelead');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const kiwifyMonthlyUrl = 'https://pay.kiwify.com.br/0XV16N4?utm_source=organic&utm_campaign=&utm_medium=&utm_content=&utm_term=';
-  const kiwifyAnnualUrl = 'https://pay.kiwify.com.br/IXPYfiP?utm_source=organic&utm_campaign=&utm_medium=&utm_content=&utm_term=';
+  const checkoutMonthlyUrl = 'https://os.phoenixrise.com.br/k/pr_awszpobtrk5x';
+  const checkoutAnnualUrl = 'https://os.phoenixrise.com.br/k/pr_gu5p32ovnmti';
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -49,7 +49,7 @@ export const LandingPageView: React.FC = () => {
     },
     {
       q: 'Como funciona a garantia de 7 dias?',
-      a: 'O seu risco é zero! Se após assinar você achar que a ferramenta não supriu suas expectativas por qualquer motivo, basta solicitar o reembolso na plataforma Kiwify dentro de 7 dias e 100% do valor pago será devolvido imediatamente.'
+      a: 'O seu risco é zero! Se após assinar você achar que a ferramenta não supriu suas expectativas por qualquer motivo, basta solicitar o reembolso dentro de 7 dias e 100% do valor pago será devolvido imediatamente.'
     }
   ];
 
@@ -704,7 +704,7 @@ export const LandingPageView: React.FC = () => {
 
               <div className="pt-8">
                 <a
-                  href={kiwifyMonthlyUrl}
+                  href={checkoutMonthlyUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:border-blue-500"
@@ -776,7 +776,7 @@ export const LandingPageView: React.FC = () => {
 
               <div className="pt-8">
                 <a
-                  href={kiwifyAnnualUrl}
+                  href={checkoutAnnualUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full py-4.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-emerald-600/30 hover:scale-[1.02]"
@@ -795,7 +795,7 @@ export const LandingPageView: React.FC = () => {
             <div className="space-y-1">
               <h4 className="text-base font-bold text-white">Garantia Incondicional de 7 Dias</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Você pode testar a ferramenta com tranquilidade. Se por qualquer motivo não gostar, solicite o reembolso na Kiwify com 1 clique e devolveremos 100% do seu dinheiro.
+                Você pode testar a ferramenta com tranquilidade. Se por qualquer motivo não gostar, solicite o reembolso com 1 clique dentro do prazo e devolveremos 100% do seu dinheiro.
               </p>
             </div>
           </div>
@@ -879,7 +879,7 @@ export const LandingPageView: React.FC = () => {
           <div className="border-t border-slate-800/80 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
             <p>© 2026 LeadForm + PageLead. Todos os direitos reservados.</p>
             <p className="flex items-center gap-1.5">
-              <Lock size={12} /> Pagamentos 100% seguros processados via Kiwify
+              <Lock size={12} /> Pagamentos 100% seguros com criptografia de ponta a ponta
             </p>
           </div>
         </div>
