@@ -1977,6 +1977,41 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
               {/* SECTION: MEDIA & FEATURES */}
               {editorSection === 'media' && (
                 <div className="space-y-6">
+                  {/* ImgBB Hosting Helper Banner */}
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
+                        <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                          <ImageIcon size={14} />
+                        </div>
+                        Onde hospedar as fotos do imóvel?
+                      </div>
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-700 tracking-wider">
+                        Recomendado
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-blue-800 leading-relaxed">
+                      Recomendamos o <b>ImgBB</b>: é 100% gratuito, sem limite de fotos e gera o <b>Link direto</b> que funciona perfeitamente na capa e na galeria.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <a
+                        href="https://imgbb.com/upload"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                      >
+                        Abrir ImgBB (Hospedar Fotos) <ExternalLink size={13} />
+                      </a>
+                      <Link
+                        to="/dashboard/images-guide"
+                        target="_blank"
+                        className="px-3.5 py-2 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs font-bold transition-all"
+                      >
+                        Ver Passo a Passo
+                      </Link>
+                    </div>
+                  </div>
+
                   <div className="space-y-3">
                     <h3 className="font-black text-gray-900 text-base border-b pb-2">Foto Principal & Vídeo</h3>
                     <div>

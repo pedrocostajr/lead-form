@@ -126,6 +126,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean, onClose?: () => void }
     { label: 'Dashboard', icon: ICONS.Dashboard, path: '/dashboard' },
     { label: 'Formulários', icon: ICONS.Forms, path: '/dashboard/forms' },
     { label: 'Page Lead', icon: <Building2 size={20} />, path: '/dashboard/pages' },
+    { label: 'Hospedar Fotos', icon: <ImageIcon size={20} />, path: '/dashboard/images-guide' },
     { label: 'Leads', icon: ICONS.Leads, path: '/dashboard/leads' },
     { label: 'Integrações', icon: ICONS.Integrations, path: '/dashboard/integrations' },
     { label: 'Configurações', icon: <Settings2 size={20} />, path: '/dashboard/settings' },
@@ -1366,6 +1367,24 @@ const FormBuilderTab = ({ form, setForm }: { form: Form, setForm: (f: Form) => v
                   </p>
                   <a href="https://www.canva.com" target="_blank" className="block text-center py-2 bg-blue-600 text-white rounded-xl text-[10px] font-bold hover:bg-blue-700 transition-all">Abrir Canva</a>
                 </div>
+
+                <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                    <ImageIcon size={14} className="text-emerald-600" />
+                    Hospedar Fotos Grátis (ImgBB)
+                  </div>
+                  <p className="text-[10px] text-emerald-900 leading-relaxed font-medium">
+                    Envie fotos direto no ImgBB e cole o <b>Link direto</b> (terminado em .jpg ou .png).
+                  </p>
+                  <div className="flex gap-2">
+                    <a href="https://imgbb.com/upload" target="_blank" rel="noreferrer" className="flex-1 text-center py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-1">
+                      Abrir ImgBB <ExternalLink size={12} />
+                    </a>
+                    <Link to="/dashboard/images-guide" target="_blank" className="flex-1 text-center py-2 bg-white border border-emerald-200 text-emerald-700 rounded-xl text-[10px] font-bold hover:bg-emerald-50 transition-all">
+                      Ver Guia
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -2328,6 +2347,24 @@ const InstructionsView = () => {
             O sistema enviará eventos de `PageView` e `Lead` automaticamente.
           </p>
         </div>
+
+        <div className="bg-white p-8 rounded-[40px] border shadow-sm space-y-4">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-2">
+            <ImageIcon size={24} />
+          </div>
+          <h3 className="text-xl font-bold">5. Hospedar Fotos de Imóveis</h3>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            Recomendamos o <b>ImgBB</b> para hospedar as fotos dos seus imóveis gratuitamente. Obtenha links diretos para colocar na foto de capa e galeria do Page Lead.
+          </p>
+          <div className="flex gap-2 pt-1">
+            <a href="https://imgbb.com/upload" target="_blank" rel="noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-blue-700 transition-all">
+              Abrir ImgBB <ExternalLink size={13} />
+            </a>
+            <Link to="/dashboard/images-guide" className="px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold border transition-all">
+              Ver Guia Passo a Passo
+            </Link>
+          </div>
+        </div>
       </div>
 
       <div className="bg-blue-600 p-10 rounded-[40px] text-white shadow-xl shadow-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -2337,6 +2374,163 @@ const InstructionsView = () => {
         </div>
         <a href="https://wa.me/5554996895454" target="_blank" className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-bold hover:shadow-lg transition-all flex items-center gap-2">
           <Smartphone size={20} /> Falar com Suporte
+        </a>
+      </div>
+    </div>
+  );
+};
+
+const ImagesGuideView = () => {
+  const [testUrl, setTestUrl] = useState('');
+  const [imgStatus, setImgStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  const handleTestImage = (url: string) => {
+    setTestUrl(url);
+    if (!url.trim()) {
+      setImgStatus('idle');
+      return;
+    }
+    setImgStatus('loading');
+    const img = new Image();
+    img.onload = () => setImgStatus('success');
+    img.onerror = () => setImgStatus('error');
+    img.src = url.trim();
+  };
+
+  return (
+    <div className="space-y-10 max-w-5xl">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest mb-2">
+            <ImageIcon size={12} /> Hospedagem Gratuita de Fotos
+          </div>
+          <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Como Hospedar Fotos dos Imóveis</h2>
+          <p className="text-gray-500 font-medium">
+            Aprenda o método mais simples e gratuito usando o <b>ImgBB</b> para obter links diretos para a Foto de Capa e Galeria do Page Lead.
+          </p>
+        </div>
+        <a
+          href="https://imgbb.com/upload"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all shrink-0"
+        >
+          Abrir ImgBB (imgbb.com) <ExternalLink size={18} />
+        </a>
+      </header>
+
+      {/* Step by Step */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-8 rounded-[36px] border shadow-sm space-y-4">
+          <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-sm">
+            1
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Acesse o ImgBB</h3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Clique no botão azul <b>"Abrir ImgBB"</b> ou acesse <a href="https://imgbb.com" target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline">imgbb.com</a>. O serviço é 100% gratuito. Não é obrigatório criar conta, mas você pode criar se quiser organizar suas fotos por álbuns de imóveis.
+          </p>
+        </div>
+
+        <div className="bg-white p-8 rounded-[36px] border shadow-sm space-y-4">
+          <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-sm">
+            2
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Selecione as Fotos do Imóvel</h3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Clique no botão <b>"Começar a enviar"</b> e selecione as fotos do seu computador ou celular (capa, fachada, salas, quartos, cozinha e área de lazer).
+          </p>
+          <div className="p-3 bg-gray-50 rounded-xl text-xs text-gray-500 font-medium">
+            💡 Dica: Para a <b>Foto de Capa</b>, dê preferência a fotos na horizontal (paisagem) e com boa iluminação.
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-[36px] border shadow-sm space-y-4">
+          <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-sm">
+            3
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Mantenha as Fotos para Sempre</h3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Na opção "Eliminar imagem automaticamente", certifique-se de selecionar <b>"Não eliminar automaticamente"</b> para que o link nunca expire. Depois, clique em <b>"Enviar"</b>.
+          </p>
+        </div>
+
+        <div className="bg-white p-8 rounded-[36px] border shadow-sm space-y-4 border-emerald-200 ring-2 ring-emerald-500/10">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm">
+            4
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Copie o "Link Direto" (O Segredo!)</h3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Após o upload ser concluído, no menu suspenso de <b>"Códigos de incorporação"</b>, selecione a opção <b>"Links diretos"</b>.
+          </p>
+          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 space-y-1">
+            <p className="font-bold">✅ Formato Correto do Link Direto:</p>
+            <p className="font-mono text-[11px] truncate">https://i.ibb.co/abc1234/foto-imovel.jpg</p>
+            <p className="text-[10px] text-emerald-700 mt-1">Sempre começa com <b>i.ibb.co</b> e termina com a extensão da foto (<b>.jpg</b> ou <b>.png</b>).</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Image Tester */}
+      <div className="bg-white p-8 md:p-10 rounded-[40px] border shadow-sm space-y-6">
+        <div>
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Testador de Links</span>
+          <h3 className="text-2xl font-black text-gray-900">Testar se a sua Foto Carrega</h3>
+          <p className="text-sm text-gray-500">Cole o link que você copiou do ImgBB no campo abaixo para validar se ele é um link direto funcional.</p>
+        </div>
+
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={testUrl}
+            onChange={e => handleTestImage(e.target.value)}
+            placeholder="Cole o link aqui (ex: https://i.ibb.co/.../foto.jpg)"
+            className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:border-blue-600 text-sm font-mono"
+          />
+
+          {imgStatus === 'loading' && (
+            <p className="text-xs text-blue-600 font-bold animate-pulse">Testando carregamento da imagem...</p>
+          )}
+
+          {imgStatus === 'success' && (
+            <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-4">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+                <CheckCircle2 size={18} className="text-emerald-600" />
+                Perfeito! Link direto válido e pronto para colar no Page Lead.
+              </div>
+              <div className="w-full max-w-sm aspect-video rounded-xl overflow-hidden border shadow-sm bg-black">
+                <img src={testUrl} alt="Preview do Teste" className="w-full h-full object-cover" />
+              </div>
+            </div>
+          )}
+
+          {imgStatus === 'error' && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-800 space-y-1.5">
+              <p className="font-bold flex items-center gap-1.5">
+                <AlertCircle size={15} /> Não conseguimos carregar a imagem com esse endereço.
+              </p>
+              <p className="text-red-700">
+                Certifique-se de que no ImgBB você selecionou a opção <b>"Links diretos"</b> (o link deve começar com <code>i.ibb.co</code> e terminar com <code>.jpg</code> ou <code>.png</code>). Se colou o link da página com visualizador (ex: <code>imgbb.com/xyz</code>), o navegador não conseguirá carregar a foto na Landing Page.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Alternative Options */}
+      <div className="bg-gray-100 p-8 rounded-[36px] flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h4 className="font-bold text-gray-900 text-lg">Outras opções gratuitas de hospedagem</h4>
+          <p className="text-sm text-gray-500">
+            Você também pode usar o <a href="https://postimages.org" target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline">Postimages</a> (selecionando 'Link direto') ou o <a href="https://canva.com" target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline">Canva</a> para incorporar artes com código HTML.
+          </p>
+        </div>
+        <a
+          href="https://postimages.org"
+          target="_blank"
+          rel="noreferrer"
+          className="px-6 py-3 bg-white text-gray-700 hover:text-blue-600 rounded-2xl font-bold text-xs border shadow-sm shrink-0 flex items-center gap-2"
+        >
+          Abrir Postimages <ExternalLink size={14} />
         </a>
       </div>
     </div>
@@ -2397,6 +2591,7 @@ const App: React.FC = () => (
         <Route path="/dashboard/forms/:formId" element={<ProtectedRoute><Layout><FormDetailView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/pages" element={<ProtectedRoute><Layout><PageLeadListRoute /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/pages/:pageId" element={<ProtectedRoute><Layout><PageLeadDetailRoute /></Layout></ProtectedRoute>} />
+        <Route path="/dashboard/images-guide" element={<ProtectedRoute><Layout><ImagesGuideView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/leads" element={<ProtectedRoute><Layout><LeadListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/integrations" element={<ProtectedRoute><Layout><IntegrationListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/admin/users" element={<ProtectedRoute><Layout><AdminUsersView /></Layout></ProtectedRoute>} />
@@ -2411,3 +2606,4 @@ const App: React.FC = () => (
 );
 
 export default App;
+
