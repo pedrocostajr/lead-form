@@ -118,3 +118,59 @@ export interface Integration {
   isActive: boolean;
   createdAt: string;
 }
+
+export type PageTemplateId = 'luxury' | 'launch' | 'ready';
+
+export interface PageLead {
+  id: string;
+  orgId: string;
+  name: string;
+  slug: string;
+  status: FormStatus;
+  templateId: PageTemplateId;
+  primaryColor?: string;
+  property: {
+    badge: string;
+    title: string;
+    subtitle: string;
+    price: string;
+    priceNote: string;
+    location: string;
+    heroImage: string;
+    videoUrl?: string;
+    description: string;
+    bedrooms: string;
+    suites: string;
+    parking: string;
+    area: string;
+    features: string[];
+    gallery: string[];
+  };
+  broker: {
+    name: string;
+    creci: string;
+    phone: string;
+    email?: string;
+    photoUrl?: string;
+    bio?: string;
+  };
+  conversion: {
+    mode: 'native_form' | 'linked_form';
+    linkedFormId?: string;
+    ctaText: string;
+    formTitle: string;
+    formSubtitle: string;
+    showWhatsappFloating: boolean;
+    whatsappMessage?: string;
+  };
+  settings: {
+    redirectUrl?: string;
+    webhookIds: string[];
+    pixelId?: string;
+    gtmId?: string;
+  };
+  sharedWith?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+

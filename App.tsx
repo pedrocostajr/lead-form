@@ -8,11 +8,13 @@ import {
   BarChart3, LogOut, ExternalLink, Edit, Eye, Filter, Download, X,
   Type, Image as ImageIcon, Video, Square, GripVertical, Copy, ArrowUp, ArrowDown,
   Columns, Columns2, Columns3, MoreVertical, Hash, Calendar, HelpCircle,
-  Search, AlertCircle, Send, Clock, EyeOff, Menu, CheckCircle, Slash, RefreshCw, Key, Mail
+  Search, AlertCircle, Send, Clock, EyeOff, Menu, CheckCircle, Slash, RefreshCw, Key, Mail,
+  Building2, Sparkles
 } from 'lucide-react';
-import { User, Role, Form, FormStatus, FormStep, FormBlock, BlockType, Column, StepLayout, Lead, Integration, Organization } from './types';
+import { User, Role, Form, FormStatus, FormStep, FormBlock, BlockType, Column, StepLayout, Lead, Integration, Organization, PageLead } from './types';
 import { db } from './store';
 import { ICONS } from './constants';
+import { PageLeadListView, PageLeadDetailView, PublicPageLeadView } from './PageLead';
 
 const cleanCanvaHtml = (html: string) => {
   if (!html) return '';
@@ -123,6 +125,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean, onClose?: () => void }
   const menuItems = [
     { label: 'Dashboard', icon: ICONS.Dashboard, path: '/dashboard' },
     { label: 'Formulários', icon: ICONS.Forms, path: '/dashboard/forms' },
+    { label: 'Page Lead', icon: <Building2 size={20} />, path: '/dashboard/pages' },
     { label: 'Leads', icon: ICONS.Leads, path: '/dashboard/leads' },
     { label: 'Integrações', icon: ICONS.Integrations, path: '/dashboard/integrations' },
     { label: 'Configurações', icon: <Settings2 size={20} />, path: '/dashboard/settings' },
@@ -235,20 +238,23 @@ const DashboardView = () => {
   const { user, isGlobalView } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
+  const [pages, setPages] = useState<PageLead[]>([]);
   const [integrationsCount, setIntegrationsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [l, f, i] = await Promise.all([
+        const [l, f, i, p] = await Promise.all([
           db.getLeads(user?.orgId, user?.email, isGlobalView),
           db.getForms(user?.orgId, user?.email, isGlobalView),
-          db.getIntegrations(user?.orgId, isGlobalView)
+          db.getIntegrations(user?.orgId, isGlobalView),
+          db.getPages(user?.orgId, user?.email, isGlobalView)
         ]);
         setLeads(l || []);
         setForms(f || []);
         setIntegrationsCount((i || []).length);
+        setPages(p || []);
       } catch (error) {
         console.error('Erro ao buscar dados do Dashboard:', error);
       } finally {
@@ -257,6 +263,16 @@ const DashboardView = () => {
     };
     fetchData();
   }, [user, isGlobalView]);
+
+  const getSourceName = (lead: Lead) => {
+    const form = forms.find(f => f.id === lead.formId);
+    if (form) return form.name;
+    const page = pages.find(p => p.id === lead.formId);
+    if (page) return `[LP] ${page.name}`;
+    if (lead.data.page_name) return `[LP] ${lead.data.page_name}`;
+    if (lead.data.property_title) return `[LP] ${lead.data.property_title}`;
+    return 'Removido';
+  };
 
   if (loading) return <div className="flex items-center justify-center p-20 font-bold">Carregando Dashboard...</div>;
 
@@ -267,21 +283,26 @@ const DashboardView = () => {
         <p className="text-gray-500 font-medium">Visão geral da sua operação de leads.</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="bg-white p-8 rounded-[40px] border shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-7 rounded-[36px] border shadow-sm">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total de Leads</p>
-          <h4 className="text-4xl font-black text-gray-900">{leads.length}</h4>
-          <p className="text-xs text-green-600 font-bold mt-2">Novos leads hoje</p>
+          <h4 className="text-3xl md:text-4xl font-black text-gray-900">{leads.length}</h4>
+          <p className="text-xs text-green-600 font-bold mt-2">Contatos capturados</p>
         </div>
-        <div className="bg-white p-8 rounded-[40px] border shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Formulários Ativos</p>
-          <h4 className="text-4xl font-black text-gray-900">{forms.filter(f => f.status === FormStatus.ACTIVE).length}</h4>
-          <p className="text-xs text-blue-600 font-bold mt-2">Aguardando conversão</p>
+        <div className="bg-white p-7 rounded-[36px] border shadow-sm">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Formulários</p>
+          <h4 className="text-3xl md:text-4xl font-black text-gray-900">{forms.filter(f => f.status === FormStatus.ACTIVE).length}</h4>
+          <p className="text-xs text-blue-600 font-bold mt-2">Fluxos ativos</p>
         </div>
-        <div className="bg-white p-8 rounded-[40px] border shadow-sm">
+        <div className="bg-white p-7 rounded-[36px] border shadow-sm">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Page Lead (LPs)</p>
+          <h4 className="text-3xl md:text-4xl font-black text-gray-900">{pages.length}</h4>
+          <p className="text-xs text-purple-600 font-bold mt-2">Landing Pages de imóveis</p>
+        </div>
+        <div className="bg-white p-7 rounded-[36px] border shadow-sm">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Integrações</p>
-          <h4 className="text-4xl font-black text-gray-900">{integrationsCount}</h4>
-          <p className="text-xs text-gray-400 font-bold mt-2">Webhooks configurados</p>
+          <h4 className="text-3xl md:text-4xl font-black text-gray-900">{integrationsCount}</h4>
+          <p className="text-xs text-gray-400 font-bold mt-2">Webhooks conectados</p>
         </div>
       </div>
 
@@ -301,8 +322,8 @@ const DashboardView = () => {
               </div>
               <p className="text-xs text-gray-400">{lead.data.email}</p>
               <div className="pt-1">
-                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-wider">
-                  {forms.find(f => f.id === lead.formId)?.name || 'Removido'}
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  {getSourceName(lead)}
                 </span>
               </div>
             </div>
@@ -315,7 +336,7 @@ const DashboardView = () => {
             <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
               <tr>
                 <th className="px-8 py-4">Nome / E-mail</th>
-                <th className="px-8 py-4">Formulário</th>
+                <th className="px-8 py-4">Origem / Fluxo</th>
                 <th className="px-8 py-4">Data</th>
               </tr>
             </thead>
@@ -327,7 +348,9 @@ const DashboardView = () => {
                     <p className="text-xs text-gray-400">{lead.data.email}</p>
                   </td>
                   <td className="px-8 py-6 text-sm font-medium text-gray-500">
-                    {forms.find(f => f.id === lead.formId)?.name || 'Removido'}
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
+                      {getSourceName(lead)}
+                    </span>
                   </td>
                   <td className="px-8 py-6 text-sm text-gray-400">{new Date(lead.createdAt).toLocaleDateString()}</td>
                 </tr>
@@ -346,17 +369,20 @@ const LeadListView = () => {
   const { user, isGlobalView } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
+  const [pages, setPages] = useState<PageLead[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [l, f] = await Promise.all([
+        const [l, f, p] = await Promise.all([
           db.getLeads(user?.orgId, user?.email, isGlobalView),
-          db.getForms(user?.orgId, user?.email, isGlobalView)
+          db.getForms(user?.orgId, user?.email, isGlobalView),
+          db.getPages(user?.orgId, user?.email, isGlobalView)
         ]);
         setLeads(l || []);
         setForms(f || []);
+        setPages(p || []);
       } catch (error) {
         console.error('Erro ao buscar leads:', error);
       } finally {
@@ -366,16 +392,26 @@ const LeadListView = () => {
     fetchData();
   }, [user, isGlobalView]);
 
+  const getSourceName = (lead: Lead) => {
+    const form = forms.find(f => f.id === lead.formId);
+    if (form) return form.name;
+    const page = pages.find(p => p.id === lead.formId);
+    if (page) return `[LP] ${page.name}`;
+    if (lead.data.page_name) return `[LP] ${lead.data.page_name}`;
+    if (lead.data.property_title) return `[LP] ${lead.data.property_title}`;
+    return 'Removido';
+  };
+
   const exportToCSV = () => {
     if (leads.length === 0) return;
 
-    const headers = ['ID', 'Nome', 'Email', 'Telefone', 'Formulario', 'Status', 'Data', 'Campos Adicionais'];
+    const headers = ['ID', 'Nome', 'Email', 'Telefone', 'Origem', 'Status', 'Data', 'Campos Adicionais'];
     const rows = leads.map(l => [
       l.id,
       l.data.name || l.data.full_name || '',
       l.data.email || '',
       l.data.phone || '',
-      forms.find(f => f.id === l.formId)?.name || l.formId,
+      getSourceName(l),
       l.status,
       new Date(l.createdAt).toLocaleString(),
       JSON.stringify(Object.fromEntries(Object.entries(l.data).filter(([k]) => !['name', 'email', 'phone', 'full_name'].includes(k))))
@@ -441,7 +477,7 @@ const LeadListView = () => {
 
             <div className="pt-2 border-t border-gray-50 flex items-center justify-between">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                Form: {forms.find(f => f.id === lead.formId)?.name || 'Removido'}
+                Origem: {getSourceName(lead)}
               </span>
               <button
                 onClick={() => handleDeleteLead(lead.id)}
@@ -461,7 +497,7 @@ const LeadListView = () => {
             <tr>
               <th className="px-8 py-4">Lead</th>
               <th className="px-8 py-4">Dados Extras</th>
-              <th className="px-8 py-4">Formulário</th>
+              <th className="px-8 py-4">Origem / Fluxo</th>
               <th className="px-8 py-4">Status</th>
               <th className="px-8 py-4 w-10"></th>
             </tr>
@@ -476,15 +512,17 @@ const LeadListView = () => {
                 </td>
                 <td className="px-8 py-6">
                   <div className="flex flex-wrap gap-1 max-w-xs">
-                    {Object.entries(lead.data).filter(([k]) => !['name', 'email', 'phone', 'full_name'].includes(k)).map(([k, v]) => (
-                      <span key={k} className="text-[9px] bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-medium">
+                    {Object.entries(lead.data).filter(([k]) => !['name', 'email', 'phone', 'full_name', 'origin_type'].includes(k)).map(([k, v]) => (
+                      <span key={k} className="text-[9px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
                         {k}: {String(v)}
                       </span>
                     ))}
                   </div>
                 </td>
                 <td className="px-8 py-6 text-sm font-medium text-gray-500">
-                  {forms.find(f => f.id === lead.formId)?.name || 'Removido'}
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
+                    {getSourceName(lead)}
+                  </span>
                 </td>
                 <td className="px-8 py-6">
                   <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full uppercase tracking-widest">{lead.status}</span>
@@ -2338,6 +2376,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+const PageLeadListRoute = () => {
+  const { user, isGlobalView } = useAuth();
+  return <PageLeadListView user={user} isGlobalView={isGlobalView} />;
+};
+
+const PageLeadDetailRoute = () => {
+  const { user, isGlobalView } = useAuth();
+  return <PageLeadDetailView user={user} isGlobalView={isGlobalView} />;
+};
+
 const App: React.FC = () => (
   <AuthProvider>
     <HashRouter>
@@ -2347,12 +2395,15 @@ const App: React.FC = () => (
         <Route path="/dashboard" element={<ProtectedRoute><Layout><DashboardView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/forms" element={<ProtectedRoute><Layout><FormListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/forms/:formId" element={<ProtectedRoute><Layout><FormDetailView /></Layout></ProtectedRoute>} />
+        <Route path="/dashboard/pages" element={<ProtectedRoute><Layout><PageLeadListRoute /></Layout></ProtectedRoute>} />
+        <Route path="/dashboard/pages/:pageId" element={<ProtectedRoute><Layout><PageLeadDetailRoute /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/leads" element={<ProtectedRoute><Layout><LeadListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/integrations" element={<ProtectedRoute><Layout><IntegrationListView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/admin/users" element={<ProtectedRoute><Layout><AdminUsersView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/settings" element={<ProtectedRoute><Layout><SettingsView /></Layout></ProtectedRoute>} />
         <Route path="/dashboard/help" element={<ProtectedRoute><Layout><InstructionsView /></Layout></ProtectedRoute>} />
         <Route path="/f/:orgSlug/:formSlug" element={<PublicFormView />} />
+        <Route path="/p/:orgSlug/:pageSlug" element={<PublicPageLeadView />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </HashRouter>

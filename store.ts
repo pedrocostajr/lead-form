@@ -12,13 +12,14 @@ import {
   limit
 } from 'firebase/firestore';
 import { db as firestore } from './firebase';
-import { Organization, User, Form, Lead, Integration, Role, FormStatus } from './types';
+import { Organization, User, Form, Lead, Integration, Role, FormStatus, PageLead } from './types';
 
 class FirebaseStorageService {
   // Collections
   private readonly ORGS = 'organizations';
   private readonly USERS = 'users';
   private readonly FORMS = 'forms';
+  private readonly PAGES = 'pages';
   private readonly LEADS = 'leads';
   private readonly INTEGRATIONS = 'integrations';
 
@@ -298,6 +299,91 @@ class FirebaseStorageService {
       throw e;
     }
   }
+
+  async getPages(orgId?: string, userEmail?: string, isGlobal: boolean = false) {
+    try {
+      const pagesRef = collection(firestore, this.PAGES);
+      let pages: PageLead[] = [];
+
+      if (isGlobal) {
+        const querySnapshot = await getDocs(pagesRef);
+        pages = querySnapshot.docs.map(doc => doc.data() as PageLead);
+      } else if (orgId) {
+        const qOrg = query(pagesRef, where("orgId", "==", orgId));
+        const orgSnapshot = await getDocs(qOrg);
+        pages = orgSnapshot.docs.map(doc => doc.data() as PageLead);
+      }
+
+      if (userEmail) {
+        const qShared = query(pagesRef, where("sharedWith", "array-contains", userEmail));
+        const sharedSnapshot = await getDocs(qShared);
+        const sharedPages = sharedSnapshot.docs.map(doc => doc.data() as PageLead);
+
+        const combined = [...pages, ...sharedPages];
+        const unique = Array.from(new Map(combined.map(p => [p.id, p])).values());
+        return unique;
+      }
+
+      return pages;
+    } catch (e) {
+      console.error("Error fetching pages:", e);
+      return [];
+    }
+  }
+
+  async sharePage(pageId: string, email: string) {
+    try {
+      const pageRef = doc(firestore, this.PAGES, pageId);
+      const pageDoc = await getDoc(pageRef);
+      if (pageDoc.exists()) {
+        const pageData = pageDoc.data() as PageLead;
+        const sharedWith = pageData.sharedWith || [];
+        if (!sharedWith.includes(email)) {
+          await setDoc(pageRef, { ...pageData, sharedWith: [...sharedWith, email] }, { merge: true });
+        }
+      }
+    } catch (e) {
+      console.error("Error sharing page:", e);
+      throw e;
+    }
+  }
+
+  async getPageBySlug(orgSlug: string, pageSlug: string) {
+    console.log(`Buscando landing page: ${pageSlug} na org: ${orgSlug}`);
+    try {
+      const q = query(
+        collection(firestore, this.PAGES),
+        where("slug", "==", pageSlug)
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data() as PageLead;
+      }
+      return null;
+    } catch (e) {
+      console.error(`Erro ao buscar landing page ${pageSlug}:`, e);
+      return null;
+    }
+  }
+
+  async savePage(page: PageLead) {
+    try {
+      await setDoc(doc(firestore, this.PAGES, page.id), this.sanitize(page));
+    } catch (e) {
+      console.error("Error saving page:", e);
+      throw e;
+    }
+  }
+
+  async deletePage(id: string) {
+    try {
+      await deleteDoc(doc(firestore, this.PAGES, id));
+    } catch (e) {
+      console.error("Error deleting page:", e);
+      throw e;
+    }
+  }
 }
 
 export const db = new FirebaseStorageService();
+
