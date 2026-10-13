@@ -2415,22 +2415,49 @@ const ImagesGuideView = () => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest mb-2">
-            <ImageIcon size={12} /> Hospedagem Gratuita de Fotos
+            <ImageIcon size={12} /> Hospedagem & Envio de Fotos
           </div>
-          <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Como Hospedar Fotos dos Imóveis</h2>
+          <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Fotos dos Seus Imóveis</h2>
           <p className="text-gray-500 font-medium">
-            Recomendamos o <b>Postimages</b>: a ferramenta mais rápida, estável e gratuita para subir fotos sem cadastro e pegar o Link Direto com 1 clique.
+            Você pode <b>enviar direto do seu celular/computador</b> no editor do Page Lead, ou utilizar o <b>Postimages</b> para hospedar e gerar links diretos.
           </p>
         </div>
-        <a
-          href="https://postimages.org"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all shrink-0"
-        >
-          Abrir Postimages (postimages.org) <ExternalLink size={18} />
-        </a>
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <Link
+            to="/dashboard/pages"
+            className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-4 rounded-2xl font-bold shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all"
+          >
+            Ir para o Page Lead
+          </Link>
+          <a
+            href="https://postimages.org"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-4 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all"
+          >
+            Abrir Postimages <ExternalLink size={18} />
+          </a>
+        </div>
       </header>
+
+      {/* Direct Upload Highlight Card */}
+      <div className="p-6 md:p-8 bg-gradient-to-r from-emerald-500/10 via-blue-500/10 to-indigo-500/10 border border-emerald-200 rounded-[36px] flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-2">
+          <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider">
+            ⭐ Mais Fácil & Rápido
+          </span>
+          <h3 className="text-xl md:text-2xl font-black text-gray-900">Envio Direto do Aparelho no Page Lead</h3>
+          <p className="text-sm text-gray-600 leading-relaxed max-w-2xl">
+            Agora você não precisa nem sair da plataforma: ao criar ou editar uma landing page, basta clicar no botão azul <b>"📁 Escolher Foto do Celular ou Computador"</b>. A imagem é comprimida e carregada instantaneamente em alta resolução.
+          </p>
+        </div>
+        <Link
+          to="/dashboard/pages"
+          className="px-6 py-3.5 bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-2xl font-bold text-xs shadow-sm shrink-0 transition-all"
+        >
+          Testar no Editor
+        </Link>
+      </div>
 
       {/* Step by Step */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

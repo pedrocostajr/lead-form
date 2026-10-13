@@ -1,14 +1,88 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   Plus, Save, Trash2, Copy, Share2, ExternalLink, ChevronLeft, ChevronRight,
   CheckCircle2, AlertCircle, Smartphone, Monitor, Sparkles, Building2, Home,
   MapPin, Bed, Bath, Car, Maximize2, Video, Image as ImageIcon, Check,
   MessageCircle, Phone, Mail, ShieldCheck, Webhook, Eye, X, Palette, Layers,
-  ArrowRight, Star, Award, Calendar
+  ArrowRight, Star, Award, Calendar, Upload, Camera, RefreshCw
 } from 'lucide-react';
 import { User, Form, FormStatus, Lead, Integration, PageLead, PageTemplateId } from './types';
 import { db } from './store';
+
+export const normalizeImageUrl = (url?: string): string => {
+  if (!url) return '';
+  let clean = url.trim().replace(/^["']|["']$/g, '');
+  if (!clean) return '';
+
+  // Google Drive sharing link
+  // e.g. https://drive.google.com/file/d/1ABC123xyz/view?usp=sharing or https://drive.google.com/open?id=1ABC123xyz
+  const gDriveMatch = clean.match(/drive\.google\.com\/(?:file\/d\/([a-zA-Z0-9_-]+)|open\?id=([a-zA-Z0-9_-]+))/);
+  if (gDriveMatch) {
+    const fileId = gDriveMatch[1] || gDriveMatch[2];
+    return `https://lh3.googleusercontent.com/d/${fileId}`;
+  }
+
+  // Dropbox share link
+  if (clean.includes('dropbox.com') && clean.includes('dl=0')) {
+    clean = clean.replace('dl=0', 'raw=1');
+  }
+
+  // Imgur page link
+  const imgurMatch = clean.match(/^https?:\/\/(?:www\.)?imgur\.com\/([a-zA-Z0-9]{5,8})$/);
+  if (imgurMatch) {
+    return `https://i.imgur.com/${imgurMatch[1]}.jpg`;
+  }
+
+  // Postimages viewer page link
+  // e.g. https://postimg.cc/87qWz1Gq or https://postimages.org/87qWz1Gq
+  const postimgMatch = clean.match(/^https?:\/\/(?:www\.)?postimg\.cc\/([a-zA-Z0-9]+)\/?$/i);
+  if (postimgMatch) {
+    return `https://i.postimg.cc/${postimgMatch[1]}/foto.jpg`;
+  }
+  const postimagesOrgMatch = clean.match(/^https?:\/\/(?:www\.)?postimages\.org\/([a-zA-Z0-9]+)\/?$/i);
+  if (postimagesOrgMatch) {
+    return `https://i.postimg.cc/${postimagesOrgMatch[1]}/foto.jpg`;
+  }
+
+  return clean;
+};
+
+export const compressImageFile = (file: File, maxWidth = 1400, quality = 0.82): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Formato de imagem inválido'));
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        if (height > maxWidth) {
+          width = Math.round((width * maxWidth) / height);
+          height = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedDataUrl);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+};
 
 const formatPhone = (value: string) => {
   if (!value) return value;
@@ -642,17 +716,34 @@ export const PageLeadRenderer: React.FC<{
         <section className="relative min-h-[75vh] flex items-center py-16 md:py-24 overflow-hidden">
           <div className="absolute inset-0 z-0">
             <img
-              src={page.property.heroImage}
+              src={normalizeImageUrl(page.property.heroImage) || TEMPLATE_PRESETS.luxury.previewImage}
               alt={page.property.title}
-              className="w-full h-full object-cover opacity-40 scale-105 transition-transform duration-1000"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src !== TEMPLATE_PRESETS.luxury.previewImage) {
+                  target.src = TEMPLATE_PRESETS.luxury.previewImage;
+                }
+              }}
+              className="w-full h-full object-cover opacity-80 md:opacity-90 scale-105 transition-transform duration-1000"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/75 to-zinc-950/40" />
+            {/* Directional contrast gradient: readable on the left for texts, clear and vibrant on the right for photo */}
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-zinc-950/20" />
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/80 to-transparent max-w-4xl" />
           </div>
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-300 text-[11px] font-black uppercase tracking-[3px]">
-                <Star size={12} /> {page.property.badge}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-300 text-[11px] font-black uppercase tracking-[3px]">
+                  <Star size={12} /> {page.property.badge}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLightboxImg(normalizeImageUrl(page.property.heroImage) || TEMPLATE_PRESETS.luxury.previewImage)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                >
+                  <Eye size={13} /> Ampliar Foto de Capa
+                </button>
               </div>
 
               <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-white">
@@ -748,10 +839,17 @@ export const PageLeadRenderer: React.FC<{
                 {page.property.gallery.map((imgUrl, index) => (
                   <div
                     key={index}
-                    onClick={() => setLightboxImg(imgUrl)}
+                    onClick={() => setLightboxImg(normalizeImageUrl(imgUrl))}
                     className={`group relative rounded-3xl overflow-hidden cursor-pointer border border-zinc-800 ${index === 0 ? 'sm:col-span-2 sm:row-span-2 aspect-[16/11]' : 'aspect-[4/3]'}`}
                   >
-                    <img src={imgUrl} alt={`Foto ${index + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img
+                      src={normalizeImageUrl(imgUrl)}
+                      alt={`Foto ${index + 1}`}
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
                       <Maximize2 className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={28} />
                     </div>
@@ -783,7 +881,15 @@ export const PageLeadRenderer: React.FC<{
             <div className="p-8 md:p-10 rounded-3xl bg-zinc-900/90 border border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-8">
               <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-6">
                 {page.broker.photoUrl ? (
-                  <img src={page.broker.photoUrl} alt={page.broker.name} className="w-24 h-24 rounded-full object-cover border-2" style={{ borderColor: accent }} />
+                  <img
+                    src={normalizeImageUrl(page.broker.photoUrl)}
+                    alt={page.broker.name}
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                    className="w-24 h-24 rounded-full object-cover border-2"
+                    style={{ borderColor: accent }}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black text-zinc-950" style={{ backgroundColor: accent }}>
                     {page.broker.name.charAt(0)}
@@ -863,14 +969,34 @@ export const PageLeadRenderer: React.FC<{
         {/* Hero Section */}
         <section className="relative bg-slate-900 text-white py-12 md:py-20 overflow-hidden">
           <div className="absolute inset-0 z-0">
-            <img src={page.property.heroImage} alt={page.property.title} className="w-full h-full object-cover opacity-30" />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-900/60" />
+            <img
+              src={normalizeImageUrl(page.property.heroImage) || TEMPLATE_PRESETS.launch.previewImage}
+              alt={page.property.title}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src !== TEMPLATE_PRESETS.launch.previewImage) {
+                  target.src = TEMPLATE_PRESETS.launch.previewImage;
+                }
+              }}
+              className="w-full h-full object-cover opacity-75 md:opacity-85"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-900/80 to-slate-900/40" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/30" />
           </div>
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-white text-xs font-bold uppercase tracking-widest">
-                <Sparkles size={14} className="text-amber-400" /> {page.property.location}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-white text-xs font-bold uppercase tracking-widest">
+                  <Sparkles size={14} className="text-amber-400" /> {page.property.location}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLightboxImg(normalizeImageUrl(page.property.heroImage) || TEMPLATE_PRESETS.launch.previewImage)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white text-xs font-bold transition-all cursor-pointer"
+                >
+                  <Eye size={13} /> Ver Capa
+                </button>
               </div>
 
               <h1 className="text-3xl md:text-5xl font-black leading-tight tracking-tight">
@@ -880,6 +1006,36 @@ export const PageLeadRenderer: React.FC<{
               <p className="text-base md:text-lg text-slate-300 leading-relaxed">
                 {page.property.subtitle}
               </p>
+
+              {/* Cover Photo Featured Card in Hero */}
+              <div
+                className="relative rounded-2xl overflow-hidden border border-white/20 shadow-2xl group max-w-xl aspect-[16/9] cursor-pointer bg-slate-950"
+                onClick={() => setLightboxImg(normalizeImageUrl(page.property.heroImage) || TEMPLATE_PRESETS.launch.previewImage)}
+              >
+                <img
+                  src={normalizeImageUrl(page.property.heroImage) || TEMPLATE_PRESETS.launch.previewImage}
+                  alt={page.property.title}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== TEMPLATE_PRESETS.launch.previewImage) {
+                      target.src = TEMPLATE_PRESETS.launch.previewImage;
+                    }
+                  }}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute top-3 left-3">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-lg">
+                    {page.property.badge}
+                  </span>
+                </div>
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs font-bold">
+                  <span className="truncate pr-2">{page.property.title}</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] bg-white/20 px-2 py-0.5 rounded-lg backdrop-blur-sm shrink-0">
+                    <Eye size={12} /> Ampliar
+                  </span>
+                </div>
+              </div>
 
               {/* Launch Specs Pills */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
@@ -972,10 +1128,17 @@ export const PageLeadRenderer: React.FC<{
                 {page.property.gallery.map((img, i) => (
                   <div
                     key={i}
-                    onClick={() => setLightboxImg(img)}
+                    onClick={() => setLightboxImg(normalizeImageUrl(img))}
                     className="group relative aspect-[4/3] rounded-3xl overflow-hidden border shadow-sm cursor-pointer"
                   >
-                    <img src={img} alt={`Galeria ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img
+                      src={normalizeImageUrl(img)}
+                      alt={`Galeria ${i + 1}`}
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
                   </div>
                 ))}
               </div>
@@ -997,7 +1160,14 @@ export const PageLeadRenderer: React.FC<{
           <div className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex items-center gap-4">
               {page.broker.photoUrl && (
-                <img src={page.broker.photoUrl} alt={page.broker.name} className="w-16 h-16 rounded-2xl object-cover" />
+                <img
+                  src={normalizeImageUrl(page.broker.photoUrl)}
+                  alt={page.broker.name}
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                  className="w-16 h-16 rounded-2xl object-cover"
+                />
               )}
               <div>
                 <p className="font-black text-lg">{page.broker.name}</p>
@@ -1050,7 +1220,14 @@ export const PageLeadRenderer: React.FC<{
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {page.broker.photoUrl ? (
-              <img src={page.broker.photoUrl} alt={page.broker.name} className="w-10 h-10 rounded-full object-cover border" />
+              <img
+                src={normalizeImageUrl(page.broker.photoUrl)}
+                alt={page.broker.name}
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+                className="w-10 h-10 rounded-full object-cover border"
+              />
             ) : (
               <div className="w-10 h-10 rounded-full text-white flex items-center justify-center font-bold" style={{ backgroundColor: accent }}>
                 {page.broker.name.charAt(0)}
@@ -1090,12 +1267,28 @@ export const PageLeadRenderer: React.FC<{
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-7 space-y-6">
             {/* Cover Photo */}
-            <div className="relative aspect-[16/10] rounded-3xl overflow-hidden shadow-lg border bg-white">
-              <img src={page.property.heroImage} alt={page.property.title} className="w-full h-full object-cover" />
+            <div
+              className="relative aspect-[16/10] rounded-3xl overflow-hidden shadow-lg border bg-white group cursor-pointer"
+              onClick={() => setLightboxImg(normalizeImageUrl(page.property.heroImage) || TEMPLATE_PRESETS.ready.previewImage)}
+            >
+              <img
+                src={normalizeImageUrl(page.property.heroImage) || TEMPLATE_PRESETS.ready.previewImage}
+                alt={page.property.title}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== TEMPLATE_PRESETS.ready.previewImage) {
+                    target.src = TEMPLATE_PRESETS.ready.previewImage;
+                  }
+                }}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
               <div className="absolute top-4 left-4">
                 <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider text-white shadow-lg" style={{ backgroundColor: accent }}>
                   {page.property.badge}
                 </span>
+              </div>
+              <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
+                <Eye size={14} /> Ampliar Capa
               </div>
             </div>
 
@@ -1105,10 +1298,17 @@ export const PageLeadRenderer: React.FC<{
                 {page.property.gallery.slice(0, 4).map((img, i) => (
                   <div
                     key={i}
-                    onClick={() => setLightboxImg(img)}
-                    className="aspect-[4/3] rounded-2xl overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setLightboxImg(normalizeImageUrl(img))}
+                    className="aspect-[4/3] rounded-2xl overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity bg-gray-100"
                   >
-                    <img src={img} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                    <img
+                      src={normalizeImageUrl(img)}
+                      alt={`Foto ${i + 1}`}
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 ))}
               </div>
@@ -1200,7 +1400,14 @@ export const PageLeadRenderer: React.FC<{
             {/* Broker Mini Card */}
             <div className="bg-white p-6 rounded-3xl border shadow-sm flex items-center gap-4">
               {page.broker.photoUrl ? (
-                <img src={page.broker.photoUrl} alt={page.broker.name} className="w-16 h-16 rounded-2xl object-cover border" />
+                <img
+                  src={normalizeImageUrl(page.broker.photoUrl)}
+                  alt={page.broker.name}
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                  className="w-16 h-16 rounded-2xl object-cover border"
+                />
               ) : (
                 <div className="w-16 h-16 rounded-2xl text-white flex items-center justify-center font-black text-xl shrink-0" style={{ backgroundColor: accent }}>
                   {page.broker.name.charAt(0)}
@@ -1589,8 +1796,14 @@ export const PageLeadListView: React.FC<{ user: User | null; isGlobalView: boole
               >
                 <div className="aspect-[16/10] relative overflow-hidden bg-gray-100">
                   <img
-                    src={page.property.heroImage || preset.previewImage}
+                    src={normalizeImageUrl(page.property.heroImage) || preset.previewImage}
                     alt={page.name}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== preset.previewImage) {
+                        target.src = preset.previewImage;
+                      }
+                    }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
@@ -1675,6 +1888,142 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
 
   const [newFeature, setNewFeature] = useState('');
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
+
+  const heroFileRef = useRef<HTMLInputElement>(null);
+  const galleryFileRef = useRef<HTMLInputElement>(null);
+  const brokerFileRef = useRef<HTMLInputElement>(null);
+
+  const [isUploadingHero, setIsUploadingHero] = useState(false);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
+  const [isUploadingBroker, setIsUploadingBroker] = useState(false);
+  const [heroImageStatus, setHeroImageStatus] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
+  const [heroImageErrorMsg, setHeroImageErrorMsg] = useState('');
+
+  // Live validator for hero image URL / data
+  useEffect(() => {
+    if (!page?.property?.heroImage) {
+      setHeroImageStatus('idle');
+      setHeroImageErrorMsg('');
+      return;
+    }
+    const raw = page.property.heroImage.trim();
+    if (!raw) {
+      setHeroImageStatus('idle');
+      setHeroImageErrorMsg('');
+      return;
+    }
+
+    if (raw.startsWith('data:image/')) {
+      setHeroImageStatus('success');
+      setHeroImageErrorMsg('');
+      return;
+    }
+
+    if (raw.includes('postimg.cc/') && !raw.includes('i.postimg.cc/')) {
+      setHeroImageStatus('error');
+      setHeroImageErrorMsg('Atenção: Você colou o link da página do Postimages. É necessário copiar a 2ª linha chamada "Link direto" (ex: https://i.postimg.cc/.../foto.jpg) ou enviar o arquivo direto do seu celular/computador pelo botão acima.');
+      return;
+    }
+
+    if (raw.includes('ibb.co/') && !raw.includes('i.ibb.co/')) {
+      setHeroImageStatus('error');
+      setHeroImageErrorMsg('Atenção: Você colou o link da página do ImgBB. É necessário copiar o "Link direto da imagem" (que começa com https://i.ibb.co/ e termina em .jpg).');
+      return;
+    }
+
+    setHeroImageStatus('validating');
+    const testImg = new Image();
+    testImg.onload = () => {
+      setHeroImageStatus('success');
+      setHeroImageErrorMsg('');
+    };
+    testImg.onerror = () => {
+      setHeroImageStatus('error');
+      setHeroImageErrorMsg('O navegador não conseguiu carregar esta imagem. Verifique se o link é direto (terminando em .jpg, .png ou .webp) ou use o botão para carregar direto do seu aparelho.');
+    };
+    testImg.src = normalizeImageUrl(raw);
+  }, [page?.property?.heroImage]);
+
+  const handleHeroFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !page) return;
+    setIsUploadingHero(true);
+    try {
+      const dataUrl = await compressImageFile(file, 1400, 0.82);
+      setPage({
+        ...page,
+        property: {
+          ...page.property,
+          heroImage: dataUrl
+        }
+      });
+      setHeroImageStatus('success');
+      setHeroImageErrorMsg('');
+    } catch (err) {
+      alert('Erro ao carregar imagem: ' + (err as Error).message);
+    } finally {
+      setIsUploadingHero(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleGalleryFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !page) return;
+    setIsUploadingGallery(true);
+    try {
+      const compressed: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const dataUrl = await compressImageFile(files[i], 1200, 0.80);
+        compressed.push(dataUrl);
+      }
+      setPage({
+        ...page,
+        property: {
+          ...page.property,
+          gallery: [...page.property.gallery, ...compressed]
+        }
+      });
+    } catch (err) {
+      alert('Erro ao carregar fotos da galeria: ' + (err as Error).message);
+    } finally {
+      setIsUploadingGallery(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleBrokerFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !page) return;
+    setIsUploadingBroker(true);
+    try {
+      const dataUrl = await compressImageFile(file, 600, 0.85);
+      setPage({
+        ...page,
+        broker: {
+          ...page.broker,
+          photoUrl: dataUrl
+        }
+      });
+    } catch (err) {
+      alert('Erro ao carregar foto do corretor: ' + (err as Error).message);
+    } finally {
+      setIsUploadingBroker(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleHeroUrlChange = (value: string) => {
+    if (!page) return;
+    const normalized = normalizeImageUrl(value);
+    setPage({
+      ...page,
+      property: {
+        ...page.property,
+        heroImage: normalized
+      }
+    });
+  };
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -1977,61 +2326,173 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
               {/* SECTION: MEDIA & FEATURES */}
               {editorSection === 'media' && (
                 <div className="space-y-6">
-                  {/* Postimages Hosting Helper Banner */}
-                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
-                        <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-                          <ImageIcon size={14} />
-                        </div>
-                        Onde hospedar as fotos do imóvel?
+                  {/* Hidden File Inputs */}
+                  <input
+                    type="file"
+                    ref={heroFileRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleHeroFileUpload}
+                  />
+                  <input
+                    type="file"
+                    ref={galleryFileRef}
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleGalleryFileUpload}
+                  />
+
+                  {/* SECTION: FOTO DE CAPA */}
+                  <div className="space-y-4 bg-white p-5 rounded-2xl border shadow-sm">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <div>
+                        <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
+                          <ImageIcon size={18} className="text-blue-600" /> Foto de Capa (Principal)
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Essa foto é o destaque de abertura da sua Landing Page.</p>
                       </div>
-                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-700 tracking-wider">
-                        Recomendado: Postimages
+                      <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 tracking-wider">
+                        Obrigatória
                       </span>
                     </div>
-                    <p className="text-[11px] text-blue-800 leading-relaxed">
-                      Recomendamos o <b>Postimages</b>: 100% gratuito, super rápido, não exige cadastro e gera na hora o <b>Link direto</b> com um clique para a foto de capa e galeria.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <a
-                        href="https://postimages.org"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                      >
-                        Abrir Postimages (Hospedar Fotos) <ExternalLink size={13} />
-                      </a>
-                      <Link
-                        to="/dashboard/images-guide"
-                        target="_blank"
-                        className="px-3.5 py-2 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs font-bold transition-all"
-                      >
-                        Ver Passo a Passo
-                      </Link>
-                    </div>
-                  </div>
 
-                  <div className="space-y-3">
-                    <h3 className="font-black text-gray-900 text-base border-b pb-2">Foto Principal & Vídeo</h3>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase">URL da Foto de Capa (Hero)</label>
-                        <span className="text-[9px] text-blue-600 font-semibold">Cole o "Link direto" do Postimages</span>
+                    {/* Method 1: Upload from Phone / PC */}
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => heroFileRef.current?.click()}
+                        disabled={isUploadingHero}
+                        className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-100 transition-all cursor-pointer"
+                      >
+                        <Upload size={16} />
+                        {isUploadingHero ? 'Otimizando e carregando foto...' : '📁 Escolher Foto do Celular ou Computador'}
+                      </button>
+                      <p className="text-[10px] text-gray-400 text-center font-medium">
+                        Recomendado • Carrega na mesma hora sem precisar de nenhum site externo
+                      </p>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-gray-200" />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">ou colar link da foto</span>
+                      <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+
+                    {/* Method 2: Paste URL */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase">Endereço da Foto (URL)</label>
+                        <span className="text-[10px] text-blue-600 font-bold">Postimages • Google Drive • Web</span>
                       </div>
                       <input
                         value={page.property.heroImage}
-                        onChange={e => setPage({ ...page, property: { ...page.property, heroImage: e.target.value } })}
+                        onChange={e => handleHeroUrlChange(e.target.value)}
                         placeholder="https://i.postimg.cc/.../foto.jpg"
                         className="w-full px-4 py-2.5 border rounded-xl text-xs font-mono outline-none focus:border-blue-600"
                       />
                     </div>
-                    {page.property.heroImage && (
-                      <img src={page.property.heroImage} alt="Capa" className="w-full h-36 object-cover rounded-2xl border" />
+
+                    {/* Postimages Link Advice / Helper */}
+                    <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between gap-3 text-xs">
+                      <p className="text-[11px] text-blue-900 leading-snug">
+                        Usando o <b>Postimages</b>? Copie a 2ª linha: <b>"Link direto"</b> (termina em .jpg ou .png).
+                      </p>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <a
+                          href="https://postimages.org"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-blue-700 transition-all"
+                        >
+                          Postimages <ExternalLink size={10} />
+                        </a>
+                        <Link
+                          to="/dashboard/images-guide"
+                          target="_blank"
+                          className="px-2.5 py-1 bg-white border border-blue-200 text-blue-700 rounded-lg text-[10px] font-bold hover:bg-blue-50 transition-all"
+                        >
+                          Guia
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Live Status Indicator & Visual Feedback */}
+                    {heroImageStatus === 'validating' && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs font-bold text-blue-700 animate-pulse">
+                        <RefreshCw size={14} className="animate-spin" /> Verificando se a foto carrega...
+                      </div>
                     )}
 
+                    {heroImageStatus === 'success' && page.property.heroImage && (
+                      <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                            <CheckCircle2 size={16} className="text-emerald-600" /> Foto Carregada e Visível com Sucesso!
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const preset = TEMPLATE_PRESETS[page.templateId] || TEMPLATE_PRESETS.ready;
+                              setPage({ ...page, property: { ...page.property, heroImage: preset.previewImage } });
+                            }}
+                            className="text-[10px] text-emerald-700 font-bold hover:underline"
+                          >
+                            Restaurar Padrão
+                          </button>
+                        </div>
+                        <div className="relative aspect-[16/9] w-full rounded-xl overflow-hidden border border-emerald-300 shadow-sm bg-black">
+                          <img
+                            src={normalizeImageUrl(page.property.heroImage)}
+                            alt="Prévia da Capa"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 left-2 bg-emerald-600 text-white text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full shadow">
+                            Pronta para Exibição
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {heroImageStatus === 'error' && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-2xl space-y-2.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-red-800">
+                          <AlertCircle size={16} className="text-red-600" /> A foto não apareceu na página!
+                        </div>
+                        <p className="text-[11px] text-red-700 leading-relaxed">
+                          {heroImageErrorMsg}
+                        </p>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => heroFileRef.current?.click()}
+                            className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                          >
+                            <Upload size={13} /> Enviar Foto do Celular/PC
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const preset = TEMPLATE_PRESETS[page.templateId] || TEMPLATE_PRESETS.ready;
+                              setPage({ ...page, property: { ...page.property, heroImage: preset.previewImage } });
+                            }}
+                            className="px-3.5 py-1.5 bg-white border border-red-200 text-red-700 text-xs font-bold rounded-xl hover:bg-red-50 transition-all"
+                          >
+                            Usar Foto de Exemplo
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SECTION: VÍDEO DO IMÓVEL */}
+                  <div className="space-y-3 bg-white p-5 rounded-2xl border shadow-sm">
+                    <h3 className="font-black text-gray-900 text-base border-b pb-2 flex items-center gap-2">
+                      <Video size={18} className="text-red-600" /> Vídeo do Imóvel (Opcional)
+                    </h3>
                     <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Vídeo do Imóvel (YouTube ou Vimeo - Opcional)</label>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Link do YouTube ou Vimeo</label>
                       <input
                         value={page.property.videoUrl || ''}
                         onChange={e => setPage({ ...page, property: { ...page.property, videoUrl: e.target.value } })}
@@ -2041,49 +2502,81 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
                     </div>
                   </div>
 
-                  {/* Gallery */}
-                  <div className="space-y-3 pt-4 border-t">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase block">Galeria de Fotos ({page.property.gallery.length})</label>
+                  {/* SECTION: GALERIA DE FOTOS */}
+                  <div className="space-y-4 bg-white p-5 rounded-2xl border shadow-sm">
+                    <div className="flex items-center justify-between border-b pb-3">
+                      <div>
+                        <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
+                          <Sparkles size={18} className="text-amber-500" /> Galeria de Fotos ({page.property.gallery.length})
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Fotos internas, salas, suítes e áreas de lazer.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => galleryFileRef.current?.click()}
+                        disabled={isUploadingGallery}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                      >
+                        <Upload size={14} />
+                        {isUploadingGallery ? 'Carregando...' : 'Adicionar Fotos do Aparelho'}
+                      </button>
+                    </div>
+
                     <div className="flex gap-2">
                       <input
                         value={newGalleryUrl}
                         onChange={e => setNewGalleryUrl(e.target.value)}
-                        placeholder="Cole a URL da foto (https://...)"
+                        placeholder="Ou cole a URL da foto (https://...)"
                         className="flex-1 px-3.5 py-2 border rounded-xl text-xs font-mono outline-none focus:border-blue-600"
                       />
                       <button
                         type="button"
                         onClick={() => {
                           if (!newGalleryUrl.trim()) return;
+                          const norm = normalizeImageUrl(newGalleryUrl.trim());
                           setPage({
                             ...page,
-                            property: { ...page.property, gallery: [...page.property.gallery, newGalleryUrl.trim()] }
+                            property: { ...page.property, gallery: [...page.property.gallery, norm] }
                           });
                           setNewGalleryUrl('');
                         }}
                         className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shrink-0"
                       >
-                        + Foto
+                        + Foto via Link
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {page.property.gallery.map((img, i) => (
-                        <div key={i} className="relative group rounded-xl overflow-hidden border aspect-video bg-gray-50">
-                          <img src={img} alt={`Galeria ${i + 1}`} className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => setPage({
-                              ...page,
-                              property: { ...page.property, gallery: page.property.gallery.filter((_, idx) => idx !== i) }
-                            })}
-                            className="absolute top-1.5 right-1.5 p-1.5 bg-red-600 text-white rounded-lg opacity-90 hover:opacity-100"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    {page.property.gallery.length === 0 ? (
+                      <div className="p-8 text-center border-2 border-dashed rounded-2xl text-gray-400 text-xs">
+                        Nenhuma foto adicional na galeria. Clique no botão acima para adicionar fotos do celular ou computador.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {page.property.gallery.map((img, i) => (
+                          <div key={i} className="relative group rounded-xl overflow-hidden border aspect-video bg-gray-50 shadow-sm">
+                            <img
+                              src={normalizeImageUrl(img)}
+                              alt={`Galeria ${i + 1}`}
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.opacity = '0.3';
+                              }}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setPage({
+                                ...page,
+                                property: { ...page.property, gallery: page.property.gallery.filter((_, idx) => idx !== i) }
+                              })}
+                              className="absolute top-1.5 right-1.5 p-1.5 bg-red-600 text-white rounded-lg opacity-90 hover:opacity-100 shadow"
+                              title="Remover foto"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Features / Amenities */}
@@ -2179,14 +2672,55 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">URL da Foto do Corretor / Logo</label>
-                    <input
-                      value={page.broker.photoUrl || ''}
-                      onChange={e => setPage({ ...page, broker: { ...page.broker, photoUrl: e.target.value } })}
-                      placeholder="https://..."
-                      className="w-full px-4 py-2.5 border rounded-xl text-xs font-mono outline-none focus:border-blue-600"
-                    />
+                  <input
+                    type="file"
+                    ref={brokerFileRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleBrokerFileUpload}
+                  />
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase">Foto do Corretor ou Logo da Imobiliária</label>
+                      <button
+                        type="button"
+                        onClick={() => brokerFileRef.current?.click()}
+                        disabled={isUploadingBroker}
+                        className="text-[10px] text-blue-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Upload size={12} /> {isUploadingBroker ? 'Carregando...' : 'Enviar do Aparelho'}
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={page.broker.photoUrl || ''}
+                        onChange={e => setPage({ ...page, broker: { ...page.broker, photoUrl: normalizeImageUrl(e.target.value) } })}
+                        placeholder="https://... ou clique em Enviar do Aparelho"
+                        className="flex-1 px-4 py-2.5 border rounded-xl text-xs font-mono outline-none focus:border-blue-600"
+                      />
+                    </div>
+                    {page.broker.photoUrl && (
+                      <div className="flex items-center gap-3 p-2.5 bg-gray-50 border rounded-xl">
+                        <img
+                          src={normalizeImageUrl(page.broker.photoUrl)}
+                          alt={page.broker.name}
+                          className="w-12 h-12 rounded-xl object-cover border"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-gray-900 truncate">Foto Carregada</p>
+                          <p className="text-[10px] text-gray-400 truncate">{page.broker.name}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPage({ ...page, broker: { ...page.broker, photoUrl: '' } })}
+                          className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg"
+                          title="Remover foto"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div>
