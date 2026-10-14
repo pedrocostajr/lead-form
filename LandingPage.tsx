@@ -17,31 +17,39 @@ export const LandingPageView: React.FC = () => {
   const checkoutAnnualUrl = 'https://os.phoenixrise.com.br/k/pr_gu5p32ovnmti';
 
   useEffect(() => {
-    // Injeção do Meta Pixel na página de vendas
-    if (!(window as any).fbq) {
-      (function(f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
-        if (f.fbq) return;
-        n = f.fbq = function() {
-          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-        };
-        if (!f._fbq) f._fbq = n;
-        n.push = n;
-        n.loaded = !0;
-        n.version = '2.0';
-        n.queue = [];
-        t = b.createElement(e);
-        t.async = !0;
-        t.src = v;
-        s = b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t, s);
-      })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-    }
-
-    if ((window as any).fbq) {
+    // 1. Injeção direta no document.head com ID identificável (compatível com SPAs e extensões)
+    const existingScript = document.getElementById('meta-pixel-sales');
+    if (!existingScript) {
+      const script = document.createElement('script');
+      script.id = 'meta-pixel-sales';
+      script.innerHTML = `
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '${metaPixelId}');
+        fbq('track', 'PageView');
+      `;
+      document.head.appendChild(script);
+      console.log(`[Meta Pixel] Script injetado para a Página de Vendas: ${metaPixelId}`);
+    } else if (typeof window !== 'undefined' && (window as any).fbq) {
       (window as any).fbq('init', metaPixelId);
       (window as any).fbq('track', 'PageView');
+      console.log(`[Meta Pixel] PageView disparado na Página de Vendas: ${metaPixelId}`);
     }
-  }, []);
+
+    // 2. Disparo de requisição direta de imagem (garante envio do PageView mesmo se extensões bloquearem JS)
+    try {
+      const fallbackImg = new Image();
+      fallbackImg.src = `https://www.facebook.com/tr?id=${metaPixelId}&ev=PageView&noscript=1`;
+    } catch (e) {
+      console.warn('[Meta Pixel] Erro no pixel fallback:', e);
+    }
+  }, [metaPixelId]);
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
