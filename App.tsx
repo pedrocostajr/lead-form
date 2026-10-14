@@ -41,8 +41,9 @@ interface AuthContextType {
   user: User | null;
   isGlobalView: boolean;
   setGlobalView: (value: boolean) => void;
-  login: (email: string) => void;
+  login: (email: string, password?: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -61,6 +62,35 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     setIsGlobalView(value);
     localStorage.setItem('lp_global_view', value.toString());
   };
+
+  const refreshUser = async (): Promise<User | null> => {
+    const saved = localStorage.getItem('lp_session');
+    const currentUser = user || (saved ? JSON.parse(saved) : null);
+    if (!currentUser) return null;
+    try {
+      let fresh: User | null = null;
+      if (currentUser.id) {
+        fresh = await db.getUserById(currentUser.id);
+      }
+      if (!fresh && currentUser.email) {
+        fresh = await db.getUserByEmail(currentUser.email);
+      }
+      if (fresh) {
+        setUser(fresh);
+        localStorage.setItem('lp_session', JSON.stringify(fresh));
+        return fresh;
+      }
+    } catch (e) {
+      console.error("Erro ao sincronizar sessão do usuário:", e);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (user?.id || user?.email) {
+      refreshUser();
+    }
+  }, []);
 
   const login = async (email: string, password?: string) => {
     try {
@@ -104,7 +134,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   return (
-    <AuthContext.Provider value={{ user, isGlobalView, setGlobalView, login, logout }}>
+    <AuthContext.Provider value={{ user, isGlobalView, setGlobalView, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -2593,17 +2623,57 @@ const ImagesGuideView = () => {
 };
 
 const PendingApprovalView = () => {
-  const { logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  const [checking, setChecking] = useState(false);
+
+  // Auto-polling a cada 5 segundos enquanto estiver nesta tela
+  useEffect(() => {
+    // Tenta sincronizar imediatamente ao montar
+    refreshUser();
+
+    const interval = setInterval(() => {
+      refreshUser();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleCheckStatus = async () => {
+    setChecking(true);
+    try {
+      const fresh = await refreshUser();
+      if (fresh && fresh.status === 'APPROVED') {
+        // Status aprovado! O ProtectedRoute re-renderiza e libera a tela do Dashboard.
+        return;
+      }
+      alert('Sua conta ainda consta como em análise. Se o administrador acabou de aprovar, aguarde alguns instantes ou clique novamente.');
+    } catch (e) {
+      alert('Erro ao verificar status. Tente novamente.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8 text-center space-y-6">
       <div className="w-24 h-24 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center animate-pulse">
         <Clock size={48} />
       </div>
       <h1 className="text-3xl font-black text-gray-900 tracking-tight">Conta em Análise</h1>
-      <p className="text-gray-500 max-w-sm font-medium">Sua conta foi criada com sucesso! Por questões de segurança, nossa equipe está revisando seus dados. Você receberá um e-mail assim que for liberado.</p>
+      <p className="text-gray-500 max-w-sm font-medium">
+        {user?.name ? `Olá, ${user.name}! ` : ''}Sua conta foi criada com sucesso! Por questões de segurança, nossa equipe está revisando seus dados. Você receberá um e-mail assim que for liberado.
+      </p>
       <div className="pt-4 flex flex-col gap-4">
-        <button onClick={() => window.location.reload()} className="bg-white border px-8 py-3 rounded-2xl font-bold hover:bg-gray-50 transition-all">Verificar Status</button>
-        <button onClick={logout} className="text-red-600 font-bold">Sair da conta</button>
+        <button
+          onClick={handleCheckStatus}
+          disabled={checking}
+          className="bg-blue-600 text-white shadow-lg shadow-blue-200 px-8 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          <RefreshCw size={18} className={checking ? 'animate-spin' : ''} />
+          {checking ? 'Verificando...' : 'Verificar Status'}
+        </button>
+        <button onClick={logout} className="text-red-600 font-bold hover:underline cursor-pointer">
+          Sair da conta
+        </button>
       </div>
     </div>
   );

@@ -33,12 +33,34 @@ class FirebaseStorageService {
     }
   }
 
+  async getUserById(id: string) {
+    try {
+      const snap = await getDoc(doc(firestore, this.USERS, id));
+      if (snap.exists()) {
+        return snap.data() as User;
+      }
+      return null;
+    } catch (e) {
+      console.error("Error fetching user by id:", e);
+      return null;
+    }
+  }
+
   async getUserByEmail(email: string) {
     try {
-      const q = query(collection(firestore, this.USERS), where("email", "==", email));
+      const trimmed = email.trim();
+      const q = query(collection(firestore, this.USERS), where("email", "==", trimmed));
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         return querySnapshot.docs[0].data() as User;
+      }
+      const lower = trimmed.toLowerCase();
+      if (lower !== trimmed) {
+        const q2 = query(collection(firestore, this.USERS), where("email", "==", lower));
+        const snap2 = await getDocs(q2);
+        if (!snap2.empty) {
+          return snap2.docs[0].data() as User;
+        }
       }
       return null;
     } catch (e) {
