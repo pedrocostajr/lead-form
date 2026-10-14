@@ -48,5 +48,12 @@
     </noscript>
     <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
+<script>
+/* Phoenix OS: leva as UTMs da página de vendas para o link do checkout */
+(function(){var q=location.search;if(!q)return;var p=new URLSearchParams(q);
+function fix(){document.querySelectorAll('a[href*="/k/"]').forEach(function(a){try{var u=new URL(a.href);
+p.forEach(function(v,k){if(!u.searchParams.has(k))u.searchParams.set(k,v)});a.href=u.toString()}catch(e){}})}
+fix();document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1500);})();
+</script>
 </body>
 </html>

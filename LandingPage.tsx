@@ -13,8 +13,29 @@ export const LandingPageView: React.FC = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const metaPixelId = '1429839067462392';
-  const checkoutMonthlyUrl = 'https://os.phoenixrise.com.br/k/pr_awszpobtrk5x';
-  const checkoutAnnualUrl = 'https://os.phoenixrise.com.br/k/pr_gu5p32ovnmti';
+
+  const appendUtmsToUrl = (rawUrl: string): string => {
+    try {
+      const u = new URL(rawUrl);
+      const params = new URLSearchParams(window.location.search);
+      if (window.location.hash.includes('?')) {
+        const hashQuery = window.location.hash.split('?')[1];
+        const hashParams = new URLSearchParams(hashQuery);
+        hashParams.forEach((v, k) => {
+          if (!params.has(k)) params.set(k, v);
+        });
+      }
+      params.forEach((v, k) => {
+        u.searchParams.set(k, v);
+      });
+      return u.toString();
+    } catch {
+      return rawUrl;
+    }
+  };
+
+  const checkoutMonthlyUrl = appendUtmsToUrl('https://os.phoenixrise.com.br/k/pr_awszpobtrk5x');
+  const checkoutAnnualUrl = appendUtmsToUrl('https://os.phoenixrise.com.br/k/pr_gu5p32ovnmti');
 
   useEffect(() => {
     // 1. Injeção direta no document.head com ID identificável (compatível com SPAs e extensões)
