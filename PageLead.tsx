@@ -48,11 +48,14 @@ export const normalizeImageUrl = (url?: string): string => {
   return clean;
 };
 
-export const compressImageFile = (file: File, maxWidth = 1400, quality = 0.82): Promise<string> => {
+export const compressImageSource = (
+  source: File | string,
+  maxWidth = 1000,
+  initialQuality = 0.68,
+  maxByteSize = 85_000
+): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
-    reader.onload = (e) => {
+    const processImageSrc = (src: string) => {
       const img = new Image();
       img.onerror = () => reject(new Error('Formato de imagem inválido'));
       img.onload = () => {
@@ -66,22 +69,104 @@ export const compressImageFile = (file: File, maxWidth = 1400, quality = 0.82): 
           width = Math.round((width * maxWidth) / height);
           height = maxWidth;
         }
+
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          resolve(e.target?.result as string);
+          resolve(src);
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedDataUrl);
+
+        let currentQuality = initialQuality;
+        let result = canvas.toDataURL('image/jpeg', currentQuality);
+
+        // Se o base64 ainda for maior que maxByteSize, reduz a qualidade progressivamente
+        while (result.length * 0.75 > maxByteSize && currentQuality > 0.35) {
+          currentQuality -= 0.10;
+          result = canvas.toDataURL('image/jpeg', currentQuality);
+        }
+
+        // Se ainda exceder, reduz as dimensões
+        if (result.length * 0.75 > maxByteSize) {
+          const smallCanvas = document.createElement('canvas');
+          smallCanvas.width = Math.round(width * 0.75);
+          smallCanvas.height = Math.round(height * 0.75);
+          const sCtx = smallCanvas.getContext('2d');
+          if (sCtx) {
+            sCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+            result = smallCanvas.toDataURL('image/jpeg', 0.50);
+          }
+        }
+
+        resolve(result);
       };
-      img.src = e.target?.result as string;
+      img.src = src;
     };
-    reader.readAsDataURL(file);
+
+    if (typeof source === 'string') {
+      processImageSrc(source);
+    } else {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+      reader.onload = (e) => processImageSrc(e.target?.result as string);
+      reader.readAsDataURL(source);
+    }
   });
+};
+
+export const compressImageFile = compressImageSource;
+
+export const ensurePageUnderFirestoreLimit = async (p: PageLead): Promise<PageLead> => {
+  const clone = JSON.parse(JSON.stringify(p)) as PageLead;
+  const jsonSize = JSON.stringify(clone).length;
+
+  // Se o documento tiver mais de 700 KB, re-comprime todas as imagens em base64
+  if (jsonSize > 700_000) {
+    console.log(`[PageLead] Otimizando imagens da página (${(jsonSize / 1024).toFixed(0)} KB) para respeitar o limite do banco...`);
+
+    // 1. Capa (Hero Image)
+    if (clone.property?.heroImage && clone.property.heroImage.startsWith('data:image')) {
+      try {
+        clone.property.heroImage = await compressImageSource(clone.property.heroImage, 900, 0.60, 75_000);
+      } catch (err) {
+        console.warn('Erro ao otimizar heroImage:', err);
+      }
+    }
+
+    // 2. Foto do Corretor
+    if (clone.broker?.photoUrl && clone.broker.photoUrl.startsWith('data:image')) {
+      try {
+        clone.broker.photoUrl = await compressImageSource(clone.broker.photoUrl, 300, 0.60, 25_000);
+      } catch (err) {
+        console.warn('Erro ao otimizar photoUrl:', err);
+      }
+    }
+
+    // 3. Galeria de fotos
+    if (clone.property?.gallery && clone.property.gallery.length > 0) {
+      // Limita galeria para até 12 fotos
+      const galleryItems = clone.property.gallery.slice(0, 12);
+      const optimizedGallery: string[] = [];
+      for (const item of galleryItems) {
+        if (item.startsWith('data:image')) {
+          try {
+            const small = await compressImageSource(item, 750, 0.55, 45_000);
+            optimizedGallery.push(small);
+          } catch {
+            optimizedGallery.push(item);
+          }
+        } else {
+          optimizedGallery.push(item);
+        }
+      }
+      clone.property.gallery = optimizedGallery;
+    }
+  }
+
+  return clone;
 };
 
 const formatPhone = (value: string) => {
@@ -1614,8 +1699,9 @@ export const PageLeadListView: React.FC<{ user: User | null; isGlobalView: boole
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      await db.savePage(copy);
-      setPages([copy, ...pages]);
+      const safeCopy = await ensurePageUnderFirestoreLimit(copy);
+      await db.savePage(safeCopy);
+      setPages([safeCopy, ...pages]);
     } catch {
       alert('Erro ao duplicar página.');
     }
@@ -1949,7 +2035,7 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
     if (!file || !page) return;
     setIsUploadingHero(true);
     try {
-      const dataUrl = await compressImageFile(file, 1400, 0.82);
+      const dataUrl = await compressImageFile(file, 1000, 0.68, 80_000);
       setPage({
         ...page,
         property: {
@@ -1970,11 +2056,25 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
   const handleGalleryFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !page) return;
+
+    if (page.property.gallery.length >= 12) {
+      alert('A galeria já atingiu o limite de 12 fotos. Remova algumas para adicionar novas.');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
     setIsUploadingGallery(true);
     try {
       const compressed: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const dataUrl = await compressImageFile(files[i], 1200, 0.80);
+      const remainingSlots = 12 - page.property.gallery.length;
+      const count = Math.min(files.length, remainingSlots);
+
+      if (files.length > remainingSlots) {
+        alert(`Você selecionou ${files.length} fotos, mas só há espaço para mais ${remainingSlots}. Adicionando as primeiras ${remainingSlots}.`);
+      }
+
+      for (let i = 0; i < count; i++) {
+        const dataUrl = await compressImageFile(files[i], 800, 0.60, 48_000);
         compressed.push(dataUrl);
       }
       setPage({
@@ -1997,7 +2097,7 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
     if (!file || !page) return;
     setIsUploadingBroker(true);
     try {
-      const dataUrl = await compressImageFile(file, 600, 0.85);
+      const dataUrl = await compressImageFile(file, 350, 0.70, 25_000);
       setPage({
         ...page,
         broker: {
@@ -2052,7 +2152,9 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
     if (!page || !user) return;
     setIsSaving(true);
     try {
-      const updated = { ...page, updatedAt: new Date().toISOString() };
+      // Garante que o documento caiba folgadamente dentro do limite de 1 MB do Firestore
+      const safePage = await ensurePageUnderFirestoreLimit(page);
+      const updated = { ...safePage, updatedAt: new Date().toISOString() };
       await db.savePage(updated);
       setPage(updated);
       alert('✅ Landing Page salva com sucesso!');
@@ -2507,9 +2609,9 @@ export const PageLeadDetailView: React.FC<{ user: User | null; isGlobalView: boo
                     <div className="flex items-center justify-between border-b pb-3">
                       <div>
                         <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
-                          <Sparkles size={18} className="text-amber-500" /> Galeria de Fotos ({page.property.gallery.length})
+                          <Sparkles size={18} className="text-amber-500" /> Galeria de Fotos ({page.property.gallery.length}/12)
                         </h3>
-                        <p className="text-xs text-gray-500 mt-0.5">Fotos internas, salas, suítes e áreas de lazer.</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Fotos internas, suítes e lazer (otimizadas automaticamente para celular).</p>
                       </div>
                       <button
                         type="button"
