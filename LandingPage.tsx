@@ -7,6 +7,80 @@ import {
   HelpCircle, PhoneCall, CheckCircle, Image as ImageIcon, Video, ArrowUpRight
 } from 'lucide-react';
 
+const PHOENIX_UTM_STORAGE_KEY = 'phoenix_utm_params';
+
+export const getStoredUtmParams = (): Record<string, string> => {
+  try {
+    const raw = localStorage.getItem(PHOENIX_UTM_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const saveStoredUtmParams = (params: Record<string, string>): void => {
+  try {
+    localStorage.setItem(PHOENIX_UTM_STORAGE_KEY, JSON.stringify(params));
+  } catch {
+    // ignore
+  }
+};
+
+export const getConsolidatedUtmParams = (): Record<string, string> => {
+  const current: Record<string, string> = {};
+
+  if (typeof window !== 'undefined') {
+    // 1. window.location.search
+    if (window.location.search) {
+      try {
+        const sp = new URLSearchParams(window.location.search);
+        sp.forEach((val, key) => {
+          if (val !== undefined && val !== null && val !== '') current[key] = val;
+        });
+      } catch {}
+    }
+
+    // 2. window.location.hash
+    if (window.location.hash && window.location.hash.includes('?')) {
+      try {
+        const hashQuery = window.location.hash.split('?')[1];
+        const hp = new URLSearchParams(hashQuery);
+        hp.forEach((val, key) => {
+          if (val !== undefined && val !== null && val !== '' && !current[key]) current[key] = val;
+        });
+      } catch {}
+    }
+  }
+
+  const stored = getStoredUtmParams();
+  const hasNew = Object.keys(current).length > 0;
+  const merged = { ...stored, ...current };
+
+  if (hasNew) {
+    saveStoredUtmParams(merged);
+  }
+
+  return merged;
+};
+
+export const appendUtmsToUrl = (rawUrl: string): string => {
+  try {
+    const u = new URL(rawUrl, typeof window !== 'undefined' ? window.location.origin : 'https://localhost');
+    const params = getConsolidatedUtmParams();
+
+    Object.entries(params).forEach(([k, v]) => {
+      // Juntar sem duplicar: não sobrescrever os parâmetros que já existem no link de checkout
+      if (!u.searchParams.has(k) && v) {
+        u.searchParams.set(k, v);
+      }
+    });
+
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+};
+
 export const LandingPageView: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
   const [previewTab, setPreviewTab] = useState<'pagelead' | 'leadform'>('pagelead');
@@ -14,30 +88,15 @@ export const LandingPageView: React.FC = () => {
 
   const metaPixelId = '1429839067462392';
 
-  const appendUtmsToUrl = (rawUrl: string): string => {
-    try {
-      const u = new URL(rawUrl);
-      const params = new URLSearchParams(window.location.search);
-      if (window.location.hash.includes('?')) {
-        const hashQuery = window.location.hash.split('?')[1];
-        const hashParams = new URLSearchParams(hashQuery);
-        hashParams.forEach((v, k) => {
-          if (!params.has(k)) params.set(k, v);
-        });
-      }
-      params.forEach((v, k) => {
-        u.searchParams.set(k, v);
-      });
-      return u.toString();
-    } catch {
-      return rawUrl;
-    }
-  };
-
   const checkoutMonthlyUrl = appendUtmsToUrl('https://os.phoenixrise.com.br/k/pr_awszpobtrk5x');
   const checkoutAnnualUrl = appendUtmsToUrl('https://os.phoenixrise.com.br/k/pr_gu5p32ovnmti');
 
   useEffect(() => {
+    // 0. Atualiza links de checkout do Phoenix OS com UTMs (do URL e localStorage)
+    if (typeof (window as any).__phoenixFixCheckoutLinks === 'function') {
+      (window as any).__phoenixFixCheckoutLinks();
+    }
+
     // 1. Injeção direta no document.head com ID identificável (compatível com SPAs e extensões)
     const existingScript = document.getElementById('meta-pixel-sales');
     if (!existingScript) {

@@ -49,11 +49,157 @@
     <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
 <script>
-/* Phoenix OS: leva as UTMs da página de vendas para o link do checkout */
-(function(){var q=location.search;if(!q)return;var p=new URLSearchParams(q);
-function fix(){document.querySelectorAll('a[href*="/k/"]').forEach(function(a){try{var u=new URL(a.href);
-p.forEach(function(v,k){if(!u.searchParams.has(k))u.searchParams.set(k,v)});a.href=u.toString()}catch(e){}})}
-fix();document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1500);})();
+/* Phoenix OS: rastreamento dinâmico de UTMs para checkout */
+(function() {
+  var STORAGE_KEY = 'phoenix_utm_params';
+
+  function getUrlParams() {
+    var params = {};
+    try {
+      if (window.location.search) {
+        var sp = new URLSearchParams(window.location.search);
+        sp.forEach(function(val, key) {
+          if (val !== undefined && val !== null && val !== '') {
+            params[key] = val;
+          }
+        });
+      }
+      if (window.location.hash && window.location.hash.indexOf('?') !== -1) {
+        var hashQuery = window.location.hash.substring(window.location.hash.indexOf('?') + 1);
+        var hp = new URLSearchParams(hashQuery);
+        hp.forEach(function(val, key) {
+          if (!params[key] && val !== undefined && val !== null && val !== '') {
+            params[key] = val;
+          }
+        });
+      }
+    } catch(e) {}
+    return params;
+  }
+
+  function getStoredParams() {
+    try {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch(e) {
+      return {};
+    }
+  }
+
+  function saveStoredParams(params) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(params));
+    } catch(e) {}
+  }
+
+  function getConsolidatedParams() {
+    var urlParams = getUrlParams();
+    var storedParams = getStoredParams();
+    var hasUrlParams = Object.keys(urlParams).length > 0;
+    var merged = Object.assign({}, storedParams, urlParams);
+    if (hasUrlParams) {
+      saveStoredParams(merged);
+    }
+    return merged;
+  }
+
+  function isCheckoutUrl(href) {
+    if (!href || typeof href !== 'string') return false;
+    return href.indexOf('/k/') !== -1 || href.indexOf('phoenixrise.com.br') !== -1;
+  }
+
+  function updateCheckoutAnchor(a) {
+    if (!a || !a.href) return;
+    if (!isCheckoutUrl(a.href)) return;
+    try {
+      var url = new URL(a.href, window.location.origin);
+      var params = getConsolidatedParams();
+      var changed = false;
+      Object.keys(params).forEach(function(k) {
+        var v = params[k];
+        // Junta sem duplicar: não sobrescreve parâmetros que já existem no link
+        if (!url.searchParams.has(k) && v !== undefined && v !== null && v !== '') {
+          url.searchParams.set(k, v);
+          changed = true;
+        }
+      });
+      if (changed) {
+        var nextHref = url.toString();
+        if (a.href !== nextHref) {
+          a.href = nextHref;
+        }
+      }
+    } catch(e) {}
+  }
+
+  function fixAllCheckoutLinks() {
+    var anchors = document.querySelectorAll('a[href*="/k/"], a[href*="phoenixrise.com.br"]');
+    for (var i = 0; i < anchors.length; i++) {
+      updateCheckoutAnchor(anchors[i]);
+    }
+  }
+
+  // 1. Executa imediatamente
+  fixAllCheckoutLinks();
+
+  // 2. Eventos de ciclo de vida do DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fixAllCheckoutLinks);
+  }
+  window.addEventListener('load', fixAllCheckoutLinks);
+  setTimeout(fixAllCheckoutLinks, 500);
+  setTimeout(fixAllCheckoutLinks, 1500);
+  setTimeout(fixAllCheckoutLinks, 3000);
+
+  // 3. Suporte a botões criados dinamicamente via MutationObserver
+  if (typeof MutationObserver !== 'undefined') {
+    var observer = new MutationObserver(function(mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        var m = mutations[i];
+        if (m.type === 'childList') {
+          for (var j = 0; j < m.addedNodes.length; j++) {
+            var node = m.addedNodes[j];
+            if (node.nodeType === 1) {
+              if (node.tagName === 'A' && isCheckoutUrl(node.getAttribute('href') || '')) {
+                updateCheckoutAnchor(node);
+              } else if (node.querySelectorAll) {
+                var dynamicLinks = node.querySelectorAll('a[href*="/k/"], a[href*="phoenixrise.com.br"]');
+                for (var k = 0; k < dynamicLinks.length; k++) {
+                  updateCheckoutAnchor(dynamicLinks[k]);
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    observer.observe(document.documentElement || document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  // 4. Interceptador de clique na fase de captura (garante os parâmetros mesmo para links gerados no clique)
+  document.addEventListener('click', function(e) {
+    var target = e.target;
+    var a = target && target.closest ? target.closest('a[href*="/k/"], a[href*="phoenixrise.com.br"]') : null;
+    if (a) {
+      updateCheckoutAnchor(a);
+    }
+  }, true);
+
+  // 5. Suporte a transições de SPA
+  window.addEventListener('popstate', function() {
+    setTimeout(fixAllCheckoutLinks, 100);
+  });
+  window.addEventListener('hashchange', function() {
+    setTimeout(fixAllCheckoutLinks, 100);
+  });
+
+  // Funções utilitárias globais para inspeção e testes
+  window.__phoenixFixCheckoutLinks = fixAllCheckoutLinks;
+  window.__phoenixGetConsolidatedParams = getConsolidatedParams;
+})();
 </script>
 </body>
 </html>
